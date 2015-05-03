@@ -1578,13 +1578,14 @@ use File::Glob qw(:case);
         },
     },
 
-    'warnings' => {
-        'FILES'      => q[
-                 ext/warnings.{pm,t}
-                 ext/warnings_c.PL
-                 t/lib/warnings
-        ],
-    },
+    # not on CPAN:
+    #'warnings' => {
+    #    'FILES'      => q[
+    #             ext/warnings.{pm,t}
+    #             ext/warnings_c.PL
+    #             t/lib/warnings
+    #    ],
+    #},
 
     'Win32' => {
         'DISTRIBUTION' => "JDB/Win32-0.52.tar.gz",
@@ -1691,6 +1692,7 @@ use File::Glob qw(:case);
                 ext/arybase/
                 ext/mro/
                 ext/re/
+                ext/warnings/
                 lib/AnyDBM_File.{pm,t}
                 lib/Benchmark.{pm,t}
                 lib/B/Deparse{.pm,.t,-*.t}
