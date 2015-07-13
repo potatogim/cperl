@@ -3738,7 +3738,7 @@ If not NULL.
 =cut
 */
 STATIC PerlIO *
-S_check_type_and_open(pTHX_ SV *name)
+S_check_type_and_open(pTHX_ PV *name)
 {
     Stat_t st;
     STRLEN len;
@@ -3807,7 +3807,7 @@ Includes optional compiled module .pmc handling.
 */
 #ifndef PERL_DISABLE_PMC
 STATIC PerlIO *
-S_doopen_pm(pTHX_ SV *name, bool do_pmc)
+S_doopen_pm(pTHX_ PV *name, bool do_pmc)
 {
     STRLEN namelen;
     const char *p = SvPV_const(name, namelen);
