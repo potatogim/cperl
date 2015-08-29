@@ -3989,6 +3989,10 @@ Perl_op_lvalue_flags(pTHX_ OP *o, I32 type, U32 flags)
             && type == OP_LEAVESUBLV)
 	    o->op_private |= OPpMAYBE_LVSUB;
 	/* FALLTHROUGH */
+    case OP_INT_PADSV:
+    case OP_UINT_PADSV:
+    case OP_STR_PADSV:
+    case OP_NUM_PADSV:
     case OP_PADSV:
 	PL_modcount++;
 	if (!type) /* local() */
@@ -5114,7 +5118,7 @@ Perl_my_attrs(pTHX_ OP *o, OP *attrs)
     }
     PL_parser->in_my = FALSE;
     PL_parser->in_my_stash = NULL;
-    return o;
+    return CHECKOP(o->op_type, o);
 }
 
 /*
@@ -5883,7 +5887,7 @@ S_op_typed(pTHX_ OP* o, bool with_native)
 }
 
 /*
-=for apidoc dMnp||op_native_padsv|NN OP* o
+=for apidoc dMp||op_native_padsv_on|NN OP* o
 
 Upgrade a OP_PADSV op to its native variant, and mark it as BOXRET,
 pushing a boxed SV onto the stack.
@@ -5897,14 +5901,30 @@ but uses the non-native context, because of the BOXRET flag.
 =cut
 */
 void
-Perl_op_native_padsv(pTHX_ OP* o) {
+Perl_op_native_padsv_on(pTHX_ OP* o) {
     const OPCODE v = op_native_variant(o, op_typed(o));
-    PERL_ARGS_ASSERT_OP_NATIVE_PADSV;
+    PERL_ARGS_ASSERT_OP_NATIVE_PADSV_ON;
     assert(OP_TYPE_IS_NN(o, OP_PADSV));
     if (v) {
         op_upgrade_native(o, v, TRUE);
         o->op_private |= OPpBOXRET;
     }
+}
+
+/*
+=for apidoc dMp||op_native_padsv_off|NN OP* o
+
+Box a native curpad entry.
+
+This might be needed when different padsv ops point to the same
+native curpad entry, which could have been upgraded, but the ops not.
+
+=cut
+*/
+void
+Perl_op_native_padsv_off(pTHX_ OP* o) {
+    PERL_ARGS_ASSERT_OP_NATIVE_PADSV_OFF;
+    op_downgrade_native(o, TRUE);
 }
 
 /*
@@ -17134,9 +17154,9 @@ S_maybe_multideref(pTHX_ OP *start, OP *orig_o, UV orig_action, U8 hints)
                                 ; /* TODO: get class and check if key is a field */
                             }
 #endif
-                            S_check_hash_fields_and_hekify(aTHX_ rop, cSVOPo);
                             if (IS_NATIVE_OP(cSVOPo))
-                                op_downgrade_native((OP*)cSVOPo, FALSE);
+                                op_downgrade_native((OP*)cSVOPo, TRUE);
+                            S_check_hash_fields_and_hekify(aTHX_ rop, cSVOPo);
 
 #ifdef USE_ITHREADS
                             /* Relocate sv to the pad for thread safety */
@@ -18098,6 +18118,8 @@ S_op_downgrade_native(pTHX_ OP* o, bool with_box) {
         } else {
             SV* sv = PAD_SVl(o->op_targ);
             IV iv = sv->sv_u.svu_iv;
+            Perl_warn(aTHX_ "native: downgrade int_padsv curpad[%lu] %s\n", o->op_targ,
+                 PAD_COMPNAME_PV(o->op_targ));
             sv_upgrade(sv, SVt_IV);
             SvIV_set(sv, iv);
             SvIOK_only(sv);
@@ -18122,6 +18144,7 @@ S_op_downgrade_native(pTHX_ OP* o, bool with_box) {
     case OP_STR_PADSV:
         if (with_box) {
             o->op_private |= OPpBOXRET;
+            DEBUG_kv(Perl_deb(aTHX_ "native: add BOX to %s\n", PL_op_name[type]));
             return TRUE;
         } else {
             SV* sv = PAD_SVl(o->op_targ);
@@ -18289,7 +18312,7 @@ S_op_insert_box(pTHX_ OP* o, OP* o2) {
     PERL_ARGS_ASSERT_OP_INSERT_BOX;
     if (OP_HAS_BOXRET(o)) {
         o->op_private |= OPpBOXRET;
-    } else { /* insert box */
+    } else if (OP_TYPE_ISNT(o2, OP_NEXTSTATE)) { /* insert box */
         core_types_t t = op_typed(o);
         OPCODE v;
         switch (t) {
