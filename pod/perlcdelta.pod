@@ -58,6 +58,13 @@ would be rejected at compile-time. cperl-only.
 See L<perldata/"Identifier parsing"> and
 L<http://perl11.org/blog/strict-names.html>
 
+=head2 Protected hash iterators
+
+Iterating over a hash may now by default not change any key. Allow the
+previous destructive behavior of changing a hash while iterating over
+it with C<use hashiter;>
+See L<[cperl #117]|https://github.com/perl11/cperl/issues/117>.
+
 =head1 Security
 
 XXX Any security-related notices go here.  In particular, any security
