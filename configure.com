@@ -6835,6 +6835,7 @@ $ WC "usecrosscompile='undef'"
 $ WC "usedevel='" + usedevel + "'"
 $ WC "usedl='" + usedl + "'"
 $ WC "usedtrace='undef'"
+$ WC "useexactarith='undef'"
 $ WC "usefaststdio='" + usefaststdio + "'"
 $ WC "useieee='" + useieee + "'"                    ! VMS-specific
 $ WC "useithreads='" + useithreads + "'"
