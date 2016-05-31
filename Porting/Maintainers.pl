@@ -1704,6 +1704,7 @@ use File::Glob qw(:case);
                 lib/DBM_Filter/
                 lib/DirHandle.{pm,t}
                 lib/English.{pm,t}
+                lib/exact_arith.{pm,t}
                 lib/ExtUtils/Embed.pm
                 lib/ExtUtils/XSSymSet.pm
                 lib/ExtUtils/t/Embed.t

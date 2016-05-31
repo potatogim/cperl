@@ -76,6 +76,22 @@ XXX For a release on a stable branch, this section aspires to be:
 
 [ List each incompatible change as a =head2 entry ]
 
+=head1 Modules and Pragmata
+
+=head2 New Modules and Pragmata
+
+=over 4
+
+=item L<exact_arith> 0.01
+
+Promote on overflow to bigint/bignum as in perl6, do not loose precision
+with all builtin arithmetic operators.
+L<[cperl #21]|https://github.com/perl11/cperl/issues/21>
+
+=back
+
+=head2 Updated Modules and Pragmata
+
 =head1 Deprecations
 
 XXX Any deprecated features, syntax, modules etc. should be listed here.
