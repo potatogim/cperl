@@ -355,7 +355,7 @@ sub format_version
   my $ver = shift;
 
   $ver =~ s/$/000000/;
-  my($r,$v,$s) = $ver =~ /(\d+)\.(\d{3})(\d{3})/;
+  my($r,$v,$s,$c) = $ver =~ /(\d+)\.(\d{3})(\d{3})(c)?/;
 
   $v = int $v;
   $s = int $s;
@@ -372,7 +372,7 @@ sub format_version
     return $ver;
   }
 
-  return sprintf "%d.%d.%d", $r, $v, $s;
+  return sprintf "%d.%d.%d%s", $r, $v, $s, $c ? $c : "";
 }
 
 sub parse_version
@@ -389,7 +389,7 @@ sub parse_version
   $ver =~ s/_//g;
   $ver =~ s/$/000000/;
 
-  my($r,$v,$s) = $ver =~ /(\d+)\.(\d{3})(\d{3})/;
+  my($r,$v,$s,$c) = $ver =~ /(\d+)\.(\d{3})(\d{3})(c)?/;
 
   $v = int $v;
   $s = int $s;
@@ -401,7 +401,7 @@ sub parse_version
     $s /= 10;
   }
 
-  return ($r, $v, $s);
+  return ($r, $v, $s, $c);
 }
 
 1;
