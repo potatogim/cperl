@@ -530,6 +530,7 @@ my $MULTI = $Config{usemultiplicity};
 my $ITHREADS = $Config{useithreads};
 my $DEBUGGING = ($Config{ccflags} =~ m/-DDEBUGGING/);
 my $DEBUG_LEAKING_SCALARS = $Config{ccflags} =~ m/-DDEBUG_LEAKING_SCALARS/;
+my $CPERL527 = ( $Config{usecperl} and $] >= 5.027 ); # hash-loop
 my $CPERL56  = ( $Config{usecperl} and $] >= 5.025003 ); #sibparent, VALID
 my $CPERL55  = ( $Config{usecperl} and $] >= 5.025001 ); #HVMAX_T, RITER_T, ...
 my $CPERL52  = ( $Config{usecperl} and $] >= 5.022002 ); #sv_objcount, AvSTATIC, sigs
@@ -5979,12 +5980,12 @@ sub B::HV::save {
       $sym = sprintf("&sv_list[%d]", $svsect->index);
       my $hv_max = $hv->MAX + 1;
       # riter required, new _aux struct at the end of the HvARRAY. allocate ARRAY also.
-      $init->add("{\tHE **a;",
+      $init->add("{\tAHE *a;",
                  "#ifdef PERL_USE_LARGE_HV_ALLOC",
-                 sprintf("\tNewxz(a, PERL_HV_ARRAY_ALLOC_BYTES(%d) + sizeof(struct xpvhv_aux), HE*);",
+                 sprintf("\tNewxz(a, PERL_HV_ARRAY_ALLOC_BYTES(%d) + sizeof(struct xpvhv_aux), AHE);",
                          $hv_max),
                  "#else",
-                 sprintf("\tNewxz(a, %d + sizeof(struct xpvhv_aux), HE*);", $hv_max),
+                 sprintf("\tNewxz(a, %d + sizeof(struct xpvhv_aux), AHE);", $hv_max),
                  "#endif",
 		 "\tHvARRAY($sym) = a;",
 		 sprintf("\tHvRITER_set($sym, %d);", $hv->RITER),"}");
@@ -6799,6 +6800,22 @@ _EOT2
     print "#define GvSVn(s) GvSV(s)\n";
   }
 
+  if (!$CPERL527) {
+    print <<'_EOT3';
+/* Since cperl-5.027 */
+#ifndef AHe
+# define AHE HE*
+# define AHe(he) he
+#endif
+#ifndef HE_EACH
+# define HE_EACH(hv,entry,block) \
+    for (; entry; entry = HeNEXT(entry)) { \
+      block; \
+    }
+#endif
+_EOT3
+  }
+
   # XXX boot_DynaLoader is exported only >=5.8.9
   # does not compile on darwin with EXTERN_C declaration
   # See branch `boot_DynaLoader`
@@ -7278,10 +7295,10 @@ _EOT7
     }
     if (destruct_level >= 1) {
         const HVMAX_T max = HvMAX(PL_strtab);
-	HE * const * const array = HvARRAY(PL_strtab);
 	RITER_T riter = 0;
-	HE *hent = array[0];
-	for (;;) {
+	AHE *const array = HvARRAY(PL_strtab);
+	HE *hent = AHe(array[0]);
+	HE_EACH(PL_strtab, hent, {
 	    if (hent) {
 		HE * const next = HeNEXT(hent);
                 if (!HEK_STATIC(&((struct shared_he*)hent)->shared_he_hek))
@@ -7291,11 +7308,11 @@ _EOT7
 	    if (!hent) {
 		if (++riter > max)
 		    break;
-		hent = array[riter];
+		hent = AHe(array[riter]);
 	    }
-        }
+        })
         /* Silence strtab refcnt warnings during global destruction */
-        Zero(HvARRAY(PL_strtab), max, HE*);
+        Zero(HvARRAY(PL_strtab), max, AHE);
         /* NULL the HEK "dfs" */
 #if PERL_VERSION > 10
         PL_registered_mros = (HV*)&PL_sv_undef;
