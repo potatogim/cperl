@@ -320,6 +320,7 @@ XML::LibXML
 YAML
 YAML::Syck
 YAML::Tiny
+||||||| merged common ancestors
 dist/cpan-meta-requirements/lib/cpan/meta/requirements.pm	Verbatim line length including indents exceeds 79 by	2
 dist/cpan-meta/lib/cpan/meta.pm	Apparent broken link	5
 dist/cpan-meta/lib/cpan/meta/converter.pm	Verbatim line length including indents exceeds 79 by	1
@@ -423,7 +424,7 @@ pod/perl.pod	Verbatim line length including indents exceeds 79 by	8
 pod/perl5222cdelta.pod	? Should you be using F<...> or maybe L<...> instead of	1
 pod/perl5240cdelta.pod	Apparent broken link	1
 pod/perl5242cdelta.pod	Apparent broken link	2
-pod/perl5260cdelta.pod	Apparent broken link	3
+pod/perl5260cdelta.pod	Apparent broken link	7
 pod/perl5260cdelta.pod	unresolved internal link	2
 pod/perl5270cdelta.pod	Apparent broken link	3
 pod/perl5270cdelta.pod	Apparent internal link is missing its forward slash	1
