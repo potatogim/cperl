@@ -12628,20 +12628,22 @@ Perl_ck_sassign(pTHX_ OP *o)
 	OP *kright = OpSIBLING(right);
 	/* For state variable assignment with attributes, kright is a list op
 	   whose op_last is a padsv. */
-	if ((IS_TYPE(kright, PADSV) ||
-	     (OP_TYPE_IS_OR_WAS(kright, OP_LIST) &&
-	      IS_TYPE((kright = OpLAST(kright)), PADSV)))
-            && (kright->op_private & (OPpLVAL_INTRO|OPpPAD_STATE))
-                  == (OPpLVAL_INTRO|OPpPAD_STATE)) {
+	if ((IS_TYPE(kright, PADSV)
+	     || (OP_TYPE_IS_OR_WAS(kright, OP_LIST) &&
+	         IS_TYPE((kright = OpLAST(kright)), PADSV)))
+         && (kright->op_private & (OPpLVAL_INTRO|OPpPAD_STATE))
+                 == (OPpLVAL_INTRO|OPpPAD_STATE)) {
 	    const PADOFFSET target = kright->op_targ;
 	    OP *const other = newOP(OP_PADSV,
 				    kright->op_flags
 				    | ((kright->op_private & ~OPpLVAL_INTRO) << 8));
 	    OP *const first = newOP(OP_NULL, 0);
+#if 1
 	    OP *const nullop = newCONDOP(0, first, o, other);
-	    /* XXX targlex disabled for now; see ticket #124160 and esp. #101640
-		newCONDOP(0, first, S_maybe_targlex(aTHX_ o), other);
-	     */
+#else
+	    /* perl5 targlex problem: see ticket #124160 and esp. #101640 */
+	    OP *const nullop = newCONDOP(0, first, S_maybe_targlex(aTHX_ o), other);
+#endif
 	    OP *const condop = OpNEXT(first);
             const U32 padflag = padadd_NO_DUP_CHECK|padadd_STATE;
 
@@ -17960,16 +17962,20 @@ Perl_rpeep(pTHX_ OP *o)
 	    break;
 
 	case OP_CONCAT:
-	    if (OpNEXT(o) && IS_TYPE(OpNEXT(o), STRINGIFY)) {
+            if (OP_TYPE_IS(OpNEXT(o), OP_STRINGIFY)) {
+		DEBUG_kv(Perl_deb(aTHX_ "rpeep: CONCAT STRINGIFY => CONCAT\n"));
 		if (OpNEXT(o)->op_private & OPpTARGET_MY) {
-		    if (OpSTACKED(o)) /* chained concats */
-			break; /* ignore_optimization */
-		    else {
+                    /* XXX test: require Config; import Config; print $Config{cp} */
+		    if (OpSTACKED(o)) { /* chained concats */
+		        /* ignore removing the stringify optimization.
+		           see [perl #101640, #124160, #49594] */
+			break;
+		    } else {
 			assert( OP_HAS_TARGLEX(o->op_type) );
 			o->op_targ = OpNEXT(o)->op_targ;
 			OpNEXT(o)->op_targ = 0;
-                        DEBUG_kv(Perl_deb(aTHX_
-                            "rpeep: set TARGET_MY on %s\n", OP_NAME(o)));
+		        DEBUG_kv(Perl_deb(aTHX_	"rpeep: set TARGET_MY on %s%s\n",
+                                          OpSTACKED(o)?"stacked ":"", OP_NAME(o)));
 			o->op_private |= OPpTARGET_MY;
 		    }
 		}
