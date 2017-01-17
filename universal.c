@@ -1137,6 +1137,21 @@ XS(XS_Mu_CREATE)
     }
 }
 
+XS(XS_JitCache_load); /* prototype to pass -Wmissing-prototypes */
+XS(XS_JitCache_load)
+{
+  dXSARGS;
+  char* path;
+  bool ret;
+  if (items < 1 || !SvPOK(ST(0)))
+    croak_xs_usage(cv, "path, @subs");
+
+  path = SvPVX(ST(0));
+  ret = jit_checkcache(NULL, path);
+  ST(0) = ret ? &PL_sv_yes : &PL_sv_no;
+  XSRETURN(1);
+}
+
 #include "vutil.h"
 #include "vxs.inc"
 
@@ -1174,6 +1189,7 @@ static const struct xsub_details details[] = {
     {"re::regexp_pattern", XS_re_regexp_pattern, "$"},
     {"Mu::new", XS_Mu_new, "$;@"},
     {"Mu::CREATE", XS_Mu_CREATE, "$"},
+    {"JitCache::load", XS_JitCache_load, "$@"},
 };
 
 STATIC OP*

@@ -2008,6 +2008,7 @@ Ap	|struct perl_vars*|init_global_struct
 Ap	|void	|free_global_struct|NN struct perl_vars *plvarsp
 #endif
 Ap	|int	|runops_standard
+Ap	|int	|runops_jit
 Ap	|int	|runops_debug
 Afpd	|void	|sv_catpvf_mg	|NN SV *const sv|NN const char *const pat|...
 Apd	|void	|sv_vcatpvf_mg	|NN SV *const sv|NN const char *const pat \
@@ -2721,8 +2722,10 @@ Ep	|int	|re_exec_indentf	|NN const char *fmt|U32 depth|...
 #  endif
 #endif
 
+#if defined(PERL_IN_DUMP_C) || defined(PERL_IN_JIT_C)
+XEp	|CV*	|deb_curcv	|I32 ix
+#endif
 #if defined(PERL_IN_DUMP_C)
-s	|CV*	|deb_curcv	|I32 ix
 s	|void	|debprof	|NN const OP *o
 s	|UV	|sequence_num	|NULLOK const OP *o
 s	|SV*	|pm_description	|NN const PMOP *pm
@@ -3344,5 +3347,15 @@ XEop	|void   |dtrace_probe_phase|enum perl_phase phase
 XEop	|void   |dtrace_probe_glob |int mode|NN const char *name|bool is_entry
 XEop	|void   |dtrace_probe_hash |int mode|NN const char *name|bool is_entry
 #endif
+
+: Used in perl.c
+Ap	|bool	|jit_init
+Ap	|void	|jit_destroy
+: Used in universal.c
+Ap	|void*	|jit_checkcache	|NULLOK const CV* cv|NN const char* pmcpath|NN char** bcpath
+: Used in op.c
+Ap	|bool	|jit_compile	|NN const CV* cv|NULLOK const char* pmcpath
+: Used in pp_hot.c
+Ap	|OP*	|jit_run	|NN const CV* cv
 
 : ex: set ts=8 sts=4 sw=4 noet:

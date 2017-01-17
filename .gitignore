@@ -98,6 +98,7 @@ MYMETA.*
 /perl
 /perl.devel
 /perl.devel.dSYM
+/libperl.bc
 
 /extra.pods
 /generate_uudmap
