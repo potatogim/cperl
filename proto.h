@@ -8521,6 +8521,12 @@ STATIC bool	S_is_handle_constructor(const OP *o, I32 numargs)
 #ifndef PERL_NO_INLINE_FUNCTIONS
 PERL_STATIC_INLINE bool	S_is_types_strict(pTHX);
 #endif
+STATIC void	S_linearize_optree(pTHX_ CV* cv, OP* o)
+			__attribute__nonnull__(pTHX_1)
+			__attribute__nonnull__(pTHX_2);
+#define PERL_ARGS_ASSERT_LINEARIZE_OPTREE	\
+	assert(cv); assert(o)
+
 STATIC OP*	S_listkids(pTHX_ OP* o);
 STATIC bool	S_looks_like_bool(pTHX_ const OP* o)
 			__attribute__nonnull__(pTHX_1);

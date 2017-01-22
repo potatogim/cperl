@@ -1748,6 +1748,7 @@
 #define io_hints(a)		S_io_hints(aTHX_ a)
 #define is_handle_constructor	S_is_handle_constructor
 #define is_types_strict()	S_is_types_strict(aTHX)
+#define linearize_optree(a,b)	S_linearize_optree(aTHX_ a,b)
 #define listkids(a)		S_listkids(aTHX_ a)
 #define looks_like_bool(a)	S_looks_like_bool(aTHX_ a)
 #define match_type(a,b,c,d,e)	S_match_type(aTHX_ a,b,c,d,e)
