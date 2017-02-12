@@ -66,6 +66,14 @@ L</Selected Bug Fixes> section.
 
 [ List each security issue as a =head2 entry ]
 
+=head2 C3 MRO is the new default
+
+The default MRO switched from the DFS (depth-first-search) to the
+recommended C3 algorithm, which was previously optional. All object
+system based on inheritence need to use C3 to avoid the diamond
+problem. And this change speeds it up, avoiding run-time loading of
+F<ext/mro>.
+
 =head1 Incompatible Changes
 
 XXX For a release on a stable branch, this section aspires to be:
