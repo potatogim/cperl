@@ -1,6 +1,7 @@
 /*    pp_type.c
  *
  *    Copyright (C) 2015 by cPanel Inc
+ *    Copyright (C) 2017 by Reini Urban <rurban@cpan.org>
  *
  *    You may distribute under the terms of either the GNU General Public
  *    License or the Artistic License, as specified in the README file.
@@ -29,6 +30,39 @@
 #include "keywords.h"
 #include "reentr.h"
 #include "regcharclass.h"
+
+STATIC
+const char * S_typename(pTHX_ const HV* stash)
+{
+    if (!(UNLIKELY(stash)))
+        return NULL;
+    {
+        const char *name = HvNAME(stash);
+        int l = HvNAMELEN(stash);
+        if (!name)
+            return NULL;
+        if (l > 6 && *name == 'm' && memEQc(name, "main::"))
+            return name+6;
+        else
+            return name; /* custom blessed type or auto-created coretype */
+    }
+}
+
+/* Of a &cv or lexical scalar/array/hash.
+   For a lexical we get the targ, for a &cv the cvref from the stack.
+ */
+PP(pp_typeof)
+{
+    dSP;
+
+    /* XXX lexicals only, TODO cvref from the stack */
+    PADNAME * const pn = PAD_COMPNAME(PL_op->op_targ);
+    HV *stash = PadnameTYPE(pn);
+    const char* name = S_typename(aTHX_ stash);
+    EXTEND(SP, 1);
+    SETs(name ? newSVpvn_flags(name, strlen(name), HvNAMEUTF8(stash)) : UNDEF);
+    RETURN;
+}
 
 /* box and unbox */
 

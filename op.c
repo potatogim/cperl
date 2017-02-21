@@ -2292,6 +2292,7 @@ Perl_scalarvoid(pTHX_ OP *arg)
         case OP_REF:
         case OP_REFGEN:
         case OP_SREFGEN:
+        case OP_TYPEOF:
         case OP_DEFINED:
         case OP_HEX:
         case OP_OCT:
@@ -9202,6 +9203,7 @@ S_looks_like_bool(pTHX_ const OP *o)
 	
 	case OP_DEFINED: case OP_EXISTS:
 	case OP_MATCH:	 case OP_EOF:
+	case OP_TYPEOF:
 
 	case OP_FLOP:
 
@@ -12152,6 +12154,7 @@ Calls L</refkids> to turn the argument into a reference.
 
 Remember that lock can be called on everything, scalar, ref, array, hash or sub,
 but internally we better work with a scalar reference.
+Also called by ck_defined, and used by pp_typeof.
 =cut
 */
 OP *
@@ -18817,6 +18820,7 @@ Perl_rpeep(pTHX_ OP *o)
         }
 
         case OP_REF:
+        case OP_TYPEOF:
             /* see if ref() is used in boolean context */
             if (OpWANT_SCALAR(o))
                 check_for_bool_cxt(o, OPpTRUEBOOL, OPpMAYBE_TRUEBOOL);

@@ -9053,6 +9053,8 @@ Perl_yylex(pTHX)
 
 	case KEY_ref:
 	    UNI(OP_REF);
+	case KEY_typeof:
+	    UNI(OP_TYPEOF);
 
 	case KEY_s:
 	    s = scan_subst(s);
