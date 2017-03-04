@@ -1849,6 +1849,9 @@ returns undef and sets L<C<$!>|perlvar/$!> to the error.  Always check
 L<C<$@>|perlvar/$@> first, as compilation could fail in a way that also
 sets L<C<$!>|perlvar/$!>.  If the file is successfully compiled,
 L<C<do>|/do EXPR> returns the value of the last expression evaluated.
+Note that the error behavior with a not found file is different to
+L</require FILE>. require is verbose and sets C<$@>, and do is silent
+and only sets C<$!>.
 
 Inclusion of library modules is better done with the
 L<C<use>|/use Module VERSION LIST> and L<C<require>|/require VERSION>

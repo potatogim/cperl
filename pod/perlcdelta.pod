@@ -70,9 +70,13 @@ L</Selected Bug Fixes> section.
 
 XXX For a release on a stable branch, this section aspires to be:
 
-    There are no changes intentionally incompatible with 5.XXX.XXX
-    If any exist, they are bugs, and we request that you submit a
-    report.  See L</Reporting Bugs> below.
+=head3 do "file" will stop searching @INC
+
+See L<perldeprecation/do "file" will stop searching @INC>
+
+=head1 Performance Enhancements
+
+=over 4
 
 [ List each incompatible change as a =head2 entry ]
 
