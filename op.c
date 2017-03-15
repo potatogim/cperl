@@ -9943,6 +9943,7 @@ S_cv_do_inline(pTHX_ OP *o, OP *cvop, CV *cv)
        Note: cv_clone is useless for us. It clones the pad, but not
        the ops. We need to keep the pads, but clone the ops. */
     o = op_clone_oplist(CvSTART(cv), NULL, TRUE);
+    firstop = o;
     for (i=0,j=0; o&&o->op_next; o=o->op_next) {
         bool seen_logop = FALSE;
         OP *prev;
@@ -10120,6 +10121,8 @@ S_cv_do_inline(pTHX_ OP *o, OP *cvop, CV *cv)
             optim_args = FALSE;
         }
     }
+    CvSTART(cv) = firstop;
+    CvROOT(cv) = LINKLIST(firstop);
     if (!o->op_next || !with_enter_leave ) { /* LEAVESUB without ENTER */
         o->op_next = cvop->op_next;     /* skip and free entersub */
         cvop->op_flags &= ~OPf_KIDS;    /* keep em */
