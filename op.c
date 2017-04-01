@@ -8844,14 +8844,24 @@ Perl_newWHILEOP(pTHX_ I32 flags, I32 debuggable PERL_UNUSED_DECL, LOOP *loop,
     if (next) {
 	loop->op_nextop = next;
         if (expr_is_iter) {
-            next = OpSIBLING(OpFIRST(loop)); /* from */
+            bool has_loop_var;
+            next = OpSIBLING(OpFIRST(loop));   /* from */
+            has_loop_var = OpLAST(loop) != next;
             OpNEXT(OpFIRST(loop)) = LINKLIST(next);
-            /* relink last range-expr to loop var */
-            OpNEXT(OpLAST(next)) = OpLAST(loop);
             OpNEXT(OpLAST(loop)) = (OP*)loop; /* and loop var back to loop */
             OpNEXT(loop) = expr; /* and loop to iter, but this
                                     link is later destroyed by linklist
                                     to the sibling. */
+            if (has_loop_var) {
+                OP* last = OpLAST(loop); /* the loop var tree */
+                /* We cannot collapse RV2GV+GV to a GVSV itervar, sv is for \$refs only */
+                if (OpKIDS(last)) { /* SV ref itervar */
+                    last = OpFIRST(last);
+                    OpNEXT(last) = OpLAST(loop);
+                }
+                OpNEXT(next) = last;         /* range -> loopvar */
+                OpNEXT(OpLAST(next)) = last; /* end of range -> loopvar */
+            }
         }
     }
     else {
