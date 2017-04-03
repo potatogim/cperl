@@ -5,7 +5,7 @@ BEGIN {
     require "./test.pl";
 }
 
-plan(129);
+plan(132);
 
 # A lot of tests to check that reversed for works.
 
@@ -687,3 +687,19 @@ for $x qw(a b c) {
     $r .= $x;
 }
 is ($r, 'abc', 'qw as parens');
+
+# nested loops, failed in the iter-and branch
+{
+  my $r = '';
+  do { $r .= $_ for (0..1) };
+  is ($r, "01", 'nested gv iter_lazyiv');
+
+  $r = '';
+  my @a = (0..1); for my $a (@a) { $r .= $_ for (@a) }
+  is ($r, "0101", 'nested gv iter_ary loop');
+
+  @r = ();
+  my @b = @a;
+  for my $n (@a) {for my $x (@b) { push @r, $x }}
+  is (join("",@r), "0101", 'nested lex iter loop');
+}
