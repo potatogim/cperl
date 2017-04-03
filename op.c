@@ -8808,17 +8808,13 @@ Perl_newWHILEOP(pTHX_ I32 flags, I32 debuggable PERL_UNUSED_DECL, LOOP *loop,
                 op_free((OP*)loop);
                 return expr;		/* listop already freed by new_logop */
             }
-            if (listop)
-                OpNEXT(OpLAST(listop)) =
-                    (o == (OP*)listop ? redo : LINKLIST(o));
-            /*listop->op_last->op_next = redo;*/
         } else {
             o = scalar(expr);
             OpFIRST(o) = newOP(OP_NULL, 0); /* nasty dummy */
             OpOTHER(o) = OpNEXT(listop);    /* continue with block, skip lineseq */
             OpMORESIB_set(OpFIRST(o), (OP*)listop);
-            OpNEXT(OpLAST(listop)) = o;     /* -> iter */
         }
+        OpNEXT(OpLAST(listop)) = (o == (OP*)listop) ? redo : LINKLIST(o);
     }
     else
 	o = (OP*)listop;
