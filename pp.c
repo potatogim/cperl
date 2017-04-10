@@ -3543,7 +3543,7 @@ PPt(pp_rand, "(:Num?):Num")
     return NORMAL;
 }
 
-PPt(pp_srand, "(:Num?):Num")
+PPt(pp_srand, "(:UInt?):UInt")
 {
     dSP; dTARGET;
     UV anum;

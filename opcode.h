@@ -1084,7 +1084,7 @@ PL_op_type_str[] = {
 	"(:Num):Num",	/* 91: sin */
 	"(:Num):Num",	/* 92: cos */
 	"(:Num?):Num",	/* 93: rand */
-	"(:Num?):Num",	/* 94: srand */
+	"(:UInt?):UInt",	/* 94: srand */
 	"(:Num):Num",	/* 95: exp */
 	"(:Num):Num",	/* 96: log */
 	"(:Num):Num",	/* 97: sqrt */
@@ -1509,7 +1509,7 @@ EXTCONST U32 PL_op_type[] = {
 	0x07ffff07,	/* 91: sin "(:Num):Num" */
 	0x07ffff07,	/* 92: cos "(:Num):Num" */
 	0xe7ffff07,	/* 93: rand "(:Num?):Num" */
-	0xe7ffff07,	/* 94: srand "(:Num?):Num" */
+	0xe6ffff06,	/* 94: srand "(:UInt?):UInt" */
 	0x07ffff07,	/* 95: exp "(:Num):Num" */
 	0x07ffff07,	/* 96: log "(:Num):Num" */
 	0x07ffff07,	/* 97: sqrt "(:Num):Num" */
