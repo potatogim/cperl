@@ -95,7 +95,10 @@ const struct flag_to_name cv_flags_names[] = {
     {CVf_ANONCONST, "ANONCONST,"},
     {CVf_HASSIG, "HASSIG,"},
     {CVf_PURE, "PURE,"},
-    {CVf_MULTI, "MULTI,"}
+    {CVf_STATIC, "STATIC,"},
+    {CVf_INLINABLE, "INLINABLE,"},
+    {CVf_MULTI, "MULTI,"},
+    {CVf_LAZYPARSE, "LAZYPARSE,"}
 };
 
 #define SV_SET_STRINGIFY_FLAGS(d,flags,names) STMT_START { \

@@ -9356,6 +9356,16 @@ Perl_yylex(pTHX)
 		    TOKEN(ANONSUB);
 		}
 		force_ident_maybe_lex('&');
+#ifdef LAZY_PARSE
+		s = skipspace(s);
+                /* BEGIN{} is KEY_BEGIN not SUB */
+                if (*s == '{' && key != KEY_BEGIN && !PL_minus_c) {
+                    PL_lex_stuff = NULL;
+                    s = scan_str(s,FALSE,TRUE,FALSE,NULL);
+                    CvLAZYBUF(PL_compcv) = PL_lex_stuff;
+                    CvLAZYPARSE_on(PL_compcv);
+                }
+#endif
                 if (key == KEY_multi) /* multi sub, multi, multi method */
                     ITOKEN(CVf_MULTI|cvflags,MULTIDECL);
                 else if (key == KEY_method)
@@ -9628,9 +9638,7 @@ S_pending_ident(pTHX)
         GV *const gv = gv_fetchpvn_flags(PL_tokenbuf + 1, tokenbuf_len - 1,
                                          ( UTF ? SVf_UTF8 : 0 ) | GV_ADDMG,
                                          SVt_PVAV);
-        if ((!gv || ((PL_tokenbuf[0] == '@') ? !GvAV(gv) : !GvHV(gv)))
-	   )
-        {
+        if (!gv || ((PL_tokenbuf[0] == '@') ? !GvAV(gv) : !GvHV(gv))) {
             /* Downgraded from fatal to warning 20000522 mjd */
             Perl_warner(aTHX_ packWARN(WARN_AMBIGUOUS),
 			"Possible unintended interpolation of %" UTF8f
@@ -9640,10 +9648,9 @@ S_pending_ident(pTHX)
     }
 
     /* build ops for a bareword */
-    pl_yylval.opval = newSVOP(OP_CONST, 0,
+    pl_yylval.opval = newSVOP(OP_CONST, OPpCONST_ENTERED << 8,
                           newSVpvn_flags(PL_tokenbuf+1, tokenbuf_len-1,
                                          UTF ? SVf_UTF8 : 0 ));
-    pl_yylval.opval->op_private = OPpCONST_ENTERED;
     if (pit != '&')
 	gv_fetchpvn_flags(PL_tokenbuf+1, tokenbuf_len-1,
 		     (PL_in_eval ? GV_ADDMULTI : GV_ADD)
