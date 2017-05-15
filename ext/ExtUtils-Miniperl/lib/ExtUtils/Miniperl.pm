@@ -93,6 +93,10 @@ static struct perl_vars* my_plvarsp;
 struct perl_vars* Perl_GetVarsPrivate(void) { return my_plvarsp; }
 #endif
 
+#ifdef AFL_FUZZ
+volatile char *__afl_persistent_sig = "##SIG_AFL_PERSISTENT##";
+#endif
+
 #ifdef NO_ENV_ARRAY_IN_MAIN
 extern char **environ;
 int
