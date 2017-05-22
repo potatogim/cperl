@@ -6205,6 +6205,10 @@ Perl_yylex(pTHX)
                                 sv_free(sv);
                                 CvMETHOD_on(PL_compcv);
                             }
+                            else if (memEQc(pv, "native")) {
+                                sv_free(sv);
+                                CvEXTERN_on(PL_compcv);
+                            }
                             /* Scalar */
                             else if (!find_in_coretypes(pv, len))
                                 goto load_attributes;
@@ -6239,6 +6243,12 @@ Perl_yylex(pTHX)
 			sv_free(sv);
 			CvPURE_on(PL_compcv);
 		    }
+                    else if (memEQc(pv, "native(")) {
+                        /* also allow :symbol("C_NAME") with native */
+                        sv_free(sv);
+                        CvEXTERN_on(PL_compcv);
+                        goto load_attributes;
+                    }
                     /* Check sub return type here, so we can pass an empty attrs
                        to newATTRSUB. This allows any known user or core type
                        to be used. */
@@ -8988,6 +8998,8 @@ Perl_yylex(pTHX)
 	case KEY_substr:
 	    LOP(OP_SUBSTR,XTERM);
 
+	case KEY_extern:
+            return (PL_expect = XTERM,PL_bufptr = s, REPORT(OP_NULL));
 	case KEY_format:
 	case KEY_sub:
 	  really_sub:
