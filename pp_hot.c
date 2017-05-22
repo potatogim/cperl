@@ -4263,7 +4263,6 @@ Perl_clear_defarray(pTHX_ AV* av, bool abandon)
     }
 }
 
-
 PP(pp_entersub)
 {
     dVAR; dSP; dPOPss;
@@ -4360,15 +4359,15 @@ PP(pp_entersub)
     if (CvISXSUB(cv) && CvROOT(cv)
         /* do not switch from PP cv to XS cd back to PP:DBsub with -d */
         && !UNLIKELY((PL_op->op_private & OPpENTERSUB_DB) && GvCV(PL_DBsub)
-                     && !CvNODEBUG(cv))) {
+                     && !CvNODEBUG(cv)))
+    {
         /* dynamically bootstrapped XS. goto to the XS variant */
-        OpTYPE_set(PL_op, OP_ENTERXSSUB);
+        OpTYPE_set(PL_op, CvEXTERN(cv) ? OP_ENTERFFI : OP_ENTERXSSUB);
         ++sp; /* and fixup stack */
 #ifdef DEBUGGING
         if (DEBUG_t_TEST_) debop(PL_op);
-#else
-        PERL_DTRACE_PROBE_OP(PL_op);
 #endif
+        PERL_DTRACE_PROBE_OP(PL_op);
         return PL_op->op_ppaddr(aTHX);
     }
 

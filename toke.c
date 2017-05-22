@@ -6226,8 +6226,9 @@ Perl_yylex(pTHX)
                                         "Attribute \"locked\" is deprecated");
                                 }
                                 else if (memEQc(pv, "native")) {
-                                    sv_free(sv);
                                     CvEXTERN_on(PL_compcv);
+                                    /* need to call DynaLoader::dl_load_file */
+                                    goto load_attributes;
                                 }
                                 /* Scalar */
                                 else if (!find_in_coretypes(pv, len))
@@ -12260,6 +12261,8 @@ Perl_start_subparse(pTHX_ I32 is_format, U32 flags)
     SAVEI32(PL_subline);
     save_item(PL_subname);
     SAVESPTR(PL_compcv);
+    if (PL_compcv && CvEXTERN(PL_compcv))
+        return oldsavestack_ix;
 
     PL_compcv = MUTABLE_CV(newSV_type(is_format ? SVt_PVFM : SVt_PVCV));
     CvFLAGS(PL_compcv) |= flags;
