@@ -526,7 +526,7 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
 			if (negated)
 			    CvFLAGS(MUTABLE_CV(sv)) &= ~CVf_EXTERN;
 			else
-			    CvFLAGS(MUTABLE_CV(sv)) |= CVf_EXTERN;
+			    CvEXTERN_on(MUTABLE_CV(sv));
                         goto next_attr;
 		    }
 		    break;

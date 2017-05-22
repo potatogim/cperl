@@ -12059,6 +12059,8 @@ Perl_start_subparse(pTHX_ I32 is_format, U32 flags)
     SAVEI32(PL_subline);
     save_item(PL_subname);
     SAVESPTR(PL_compcv);
+    if (CvEXTERN(PL_compcv))
+        return oldsavestack_ix;
 
     PL_compcv = MUTABLE_CV(newSV_type(is_format ? SVt_PVFM : SVt_PVCV));
     CvFLAGS(PL_compcv) |= flags;

@@ -204,9 +204,11 @@ static const char array_passed_to_stat[] =
     || OP_TYPE_IS_NN((o), OP_PADHV))
 #define IS_SUB_OP(o)  \
     (OP_TYPE_IS_NN((o), OP_ENTERSUB) \
+  || OP_TYPE_IS_NN((o), OP_ENTERFFI) \
   || OP_TYPE_IS_NN((o), OP_ENTERXSSUB))
 #define IS_LEAVESUB_OP(o)  \
     (OP_TYPE_IS_NN((o), OP_LEAVESUB) \
+  || OP_TYPE_IS_NN((o), OP_LEAVEFFI) \
   || OP_TYPE_IS_NN((o), OP_LEAVESUBLV))
 #define OP_GIMME_VOID(o)    (OP_GIMME((o),0) == G_VOID)
 #define OP_GIMME_SCALAR(o)  (OP_GIMME((o),0) == G_SCALAR)
@@ -2070,6 +2072,7 @@ S_scalar_slice_warning(pTHX_ const OP *o)
     case OP_REVERSE:
     case OP_ENTERSUB:
     case OP_ENTERXSSUB:
+    case OP_ENTERFFI:
     case OP_CALLER:
     case OP_LSTAT:
     case OP_STAT:
@@ -3591,7 +3594,8 @@ PERL_STATIC_INLINE bool
 S_potential_mod_type(I32 type)
 {
     /* Types that only potentially result in modification.  */
-    return type == OP_GREPSTART || type == OP_ENTERSUB || type == OP_ENTERXSSUB
+    return type == OP_GREPSTART || type == OP_ENTERSUB
+        || type == OP_ENTERXSSUB || type == OP_ENTERFFI
 	|| type == OP_REFGEN    || type == OP_LEAVESUBLV;
 }
 
@@ -3608,13 +3612,12 @@ Perl_op_lvalue_flags(pTHX_ OP *o, I32 type, U32 flags)
 
     if ((o->op_private & OPpTARGET_MY)
         && OP_HAS_TARGLEX(o->op_type)) /* OPp share the meaning */
-    {
 	return o;
-    }
 
     assert( (o->op_flags & OPf_WANT) != OPf_WANT_VOID );
 
-    if (type == OP_PRTF || type == OP_SPRINTF) type = OP_ENTERSUB;
+    if (type == OP_PRTF || type == OP_SPRINTF)
+        type = OP_ENTERSUB;
 
     switch (o->op_type) {
     case OP_UNDEF:
@@ -3626,6 +3629,7 @@ Perl_op_lvalue_flags(pTHX_ OP *o, I32 type, U32 flags)
 	goto nomod;
     case OP_ENTERSUB:
     case OP_ENTERXSSUB:
+    case OP_ENTERFFI:
 	if ((type == OP_UNDEF || type == OP_REFGEN || type == OP_LOCK)
             && !OpSTACKED(o)) {
             OpTYPE_set(o, OP_RV2CV);		/* entersub => rv2cv */
@@ -3909,7 +3913,7 @@ Perl_op_lvalue_flags(pTHX_ OP *o, I32 type, U32 flags)
     case OP_AELEM:
     case OP_HELEM:
 	ref(OpFIRST(o), o->op_type);
-	if ((type == OP_ENTERSUB || type == OP_ENTERXSSUB) &&
+	if ((type == OP_ENTERSUB || type == OP_ENTERXSSUB || type == OP_ENTERFFI) &&
 	     !(o->op_private & (OPpLVAL_INTRO | OPpDEREF)))
 	    o->op_private |= OPpLVAL_DEFER;
 	if (type == OP_LEAVESUBLV)
@@ -4067,7 +4071,8 @@ Perl_op_lvalue_flags(pTHX_ OP *o, I32 type, U32 flags)
 			   "Useless localization of %s", OP_DESC(o));
 	}
     }
-    else if (type != OP_GREPSTART && type != OP_ENTERSUB && type != OP_ENTERXSSUB
+    else if (type != OP_GREPSTART && type != OP_ENTERSUB
+             && type != OP_ENTERXSSUB && type != OP_ENTERFFI
              && type != OP_LEAVESUBLV && !IS_SUB_OP(o))
 	o->op_flags |= OPf_REF;
     return o;
@@ -4197,6 +4202,7 @@ Perl_doref(pTHX_ OP *o, I32 type, bool set_op_ref)
     switch (o->op_type) {
     case OP_ENTERSUB:
     case OP_ENTERXSSUB:
+    case OP_ENTERFFI:
 	if ((type == OP_EXISTS || type == OP_DEFINED) && !OpSTACKED(o)) {
             OpTYPE_set(o, OP_RV2CV);             /* entersub => rv2cv */
 	    assert(IS_NULL_OP(OpFIRST(o)));
@@ -8750,6 +8756,7 @@ S_looks_like_bool(pTHX_ const OP *o)
 
 	case OP_ENTERSUB:
 	case OP_ENTERXSSUB:
+	case OP_ENTERFFI:
 
 	case OP_NOT:	case OP_XOR:
 
@@ -12020,6 +12027,8 @@ S_op_typed_user(pTHX_ OP* o, char** usertype, int* u8)
         break;
     }
     case OP_RV2CV:
+    case OP_ENTERFFI:
+    /* we dont have typed XS yet */
     case OP_ENTERSUB: {
         PADNAME * const pn = PAD_COMPNAME(0); /* first slot: rettype */
         return stash_to_coretype(PadnameTYPE(pn));
@@ -14685,7 +14694,7 @@ S_entersub_alloc_targ(pTHX_ OP * const o)
 
 /*
 =for apidoc ck_subr
-CHECK callback for entersub, enterxssub, both (dm1  L).
+CHECK callback for entersub, enterxssub, enterffi. All (dm1  L).
 See also L</ck_method>
 =cut
 */
@@ -14763,6 +14772,10 @@ Perl_ck_subr(pTHX_ OP *o)
 	S_cv_get_call_checker(cv, &ckfun, &ckobj, &flags);
 	if (CvISXSUB(cv)) {
             o->op_targ = pad_alloc(OP_ENTERXSSUB, SVs_PADTMP);
+            o->op_private |= OPpENTERSUB_HASTARG;
+        }
+	else if (CvEXTERN(cv)) {
+            o->op_targ = pad_alloc(OP_ENTERFFI, SVs_PADTMP);
             o->op_private |= OPpENTERSUB_HASTARG;
         }
         else if (!CvROOT(cv))
