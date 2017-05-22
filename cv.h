@@ -49,6 +49,8 @@ See L<perlguts/Autoloading with XSUBs>.
 #define CvROOT(sv)	((XPVCV*)MUTABLE_PTR(SvANY(sv)))->xcv_root_u.xcv_root
 #define CvXSUB(sv)	((XPVCV*)MUTABLE_PTR(SvANY(sv)))->xcv_root_u.xcv_xsub
 #define CvXSUBANY(sv)	((XPVCV*)MUTABLE_PTR(SvANY(sv)))->xcv_start_u.xcv_xsubany
+#define CvFFILIB(sv)	((XPVCV*)MUTABLE_PTR(SvANY(sv)))->xcv_start_u.xcv_ffilib
+#define CvFFISYM(sv)	((XPVCV*)MUTABLE_PTR(SvANY(sv)))->xcv_root_u.xcv_ffisym
 #define CvGV(sv)	S_CvGV(aTHX_ (CV *)(sv))
 #define CvGV_set(cv,gv)	Perl_cvgv_set(aTHX_ cv, gv)
 #define CvHASGV(cv)	cBOOL(SvANY(cv)->xcv_gv_u.xcv_gv)
@@ -150,7 +152,8 @@ See L<perlguts/Autoloading with XSUBs>.
 #define CVf_STATIC	0x200000 /* statically allocated padlist and proto */
 #define CVf_INLINABLE	0x400000 /* Should be inlined */
 #define CVf_EXTERN	0x800000 /* ffi declaration. extern or :native */
-#define CVf_MULTI	0x1000000 /* multi dispatch on types */
+#define CVf_MULTI	0x1000000 /* TODO GH #16 multi dispatch on types */
+#define CVf_LAZYPARSE	0x2000000 /* TODO GH #274 */
 
 /* This symbol for optimised communication between toke.c and op.c: */
 #define CVf_BUILTIN_ATTRS	(CVf_METHOD|CVf_LVALUE|CVf_CONST|CVf_ANONCONST \
@@ -252,7 +255,7 @@ See L<perlguts/Autoloading with XSUBs>.
 #define CvPURE_on(cv)		(CvFLAGS(cv) |= CVf_PURE)
 #define CvSTATIC(cv)		(CvFLAGS(cv) & CVf_STATIC)
 #define CvEXTERN(cv)		(CvFLAGS(cv) & CVf_EXTERN)
-#define CvEXTERN_on(cv)		(CvFLAGS(cv) != CVf_EXTERN)
+#define CvEXTERN_on(cv)		(CvFLAGS(cv) |= (CVf_EXTERN|CVf_ISXSUB))
 
 #define CvMULTI(cv)             0
 

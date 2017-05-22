@@ -1695,7 +1695,12 @@ const struct flag_to_name cv_flags_names[] = {
     {CVf_TYPED, "TYPED,"},
     {CVf_ANONCONST, "ANONCONST,"},
     {CVf_HASSIG, "HASSIG,"},
-    {CVf_PURE, "PURE,"}
+    {CVf_PURE, "PURE,"},
+    {CVf_STATIC, "STATIC,"},
+    {CVf_INLINABLE, "INLINABLE,"},
+    {CVf_EXTERN, "EXTERN,"},
+    {CVf_MULTI, "MULTI,"},
+    {CVf_LAZYPARSE, "LAZYPARSE,"}
 };
 
 const struct flag_to_name hv_flags_names[] = {
@@ -2334,17 +2339,21 @@ Perl_do_sv_dump(pTHX_ I32 level, PerlIO *file, SV *sv, I32 nest, I32 maxnest,
 				 PTR2UV(CvSTART(sv)),
 				 (IV)sequence_num(CvSTART(sv)));
 	    }
-	    Perl_dump_indent(aTHX_ level, file, "  ROOT = 0x%" UVxf "\n",
-			     PTR2UV(CvROOT(sv)));
-	    if (CvROOT(sv) && dumpops) {
-		do_op_dump(level+1, file, CvROOT(sv));
-	    }
+            Perl_dump_indent(aTHX_ level, file, "  ROOT = 0x%" UVxf "\n",
+                             PTR2UV(CvROOT(sv)));
+            if (CvROOT(sv) && dumpops) {
+                do_op_dump(level+1, file, CvROOT(sv));
+            }
 	} else {
 	    SV * const constant = cv_const_sv((const CV *)sv);
 
 	    Perl_dump_indent(aTHX_ level, file, "  XSUB = 0x%" UVxf "\n", PTR2UV(CvXSUB(sv)));
 
-	    if (constant) {
+            if (CvEXTERN(sv))
+                Perl_dump_indent(aTHX_ level, file,
+				 "  FFILIB = 0x%" UVxf "\n",
+				 PTR2UV(CvFFILIB(sv)));
+	    else if (constant) {
 		Perl_dump_indent(aTHX_ level, file, "  XSUBANY = 0x%" UVxf
 				 " (CONST SV)\n",
 				 PTR2UV(CvXSUBANY(sv).any_ptr));
