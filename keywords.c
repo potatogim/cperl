@@ -1499,7 +1499,7 @@ Perl_keyword (pTHX_ const char *name, I32 len, bool all_keywords)
           goto unknown;
       }
 
-    case 6: /* 34 tokens of length 6 */
+    case 6: /* 35 tokens of length 6 */
       switch (name[0])
       {
         case 'a':
@@ -1570,15 +1570,31 @@ Perl_keyword (pTHX_ const char *name, I32 len, bool all_keywords)
               goto unknown;
 
             case 'x':
-              if (name[2] == 'i' &&
-                  name[3] == 's' &&
-                  name[4] == 't' &&
-                  name[5] == 's')
-              {                                   /* exists           */
-                return KEY_exists;
-              }
+              switch (name[2])
+              {
+                case 'i':
+                  if (name[3] == 's' &&
+                      name[4] == 't' &&
+                      name[5] == 's')
+                  {                               /* exists           */
+                    return KEY_exists;
+                  }
 
-              goto unknown;
+                  goto unknown;
+
+                case 't':
+                  if (name[3] == 'e' &&
+                      name[4] == 'r' &&
+                      name[5] == 'n')
+                  {                               /* extern           */
+                    return KEY_extern;
+                  }
+
+                  goto unknown;
+
+                default:
+                  goto unknown;
+              }
 
             default:
               goto unknown;
@@ -3508,5 +3524,5 @@ unknown:
 }
 
 /* Generated from:
- * 077e5a14bb04d2dcfaddcab0c5a9c7141f04d51e5a4261d295a9845c07a2cde5 regen/keywords.pl
+ * ec56874f5c4701790831583241f8fd04b2c6b60f07d7598165461af48437cc12 regen/keywords.pl
  * ex: set ro: */
