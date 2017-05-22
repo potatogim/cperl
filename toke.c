@@ -6225,15 +6225,14 @@ Perl_yylex(pTHX)
                                     deprecate_disappears_in("5.28",
                                         "Attribute \"locked\" is deprecated");
                                 }
+                                else if (memEQc(pv, "native")) {
+                                    sv_free(sv);
+                                    CvEXTERN_on(PL_compcv);
+                                }
                                 /* Scalar */
                                 else if (!find_in_coretypes(pv, len))
                                     goto load_attributes;
                             }
-                            else if (memEQc(pv, "native")) {
-                                sv_free(sv);
-                                CvEXTERN_on(PL_compcv);
-                            }
-                            /* Scalar */
                             else if (!find_in_coretypes(pv, len))
                                 goto load_attributes;
                         }
@@ -6281,7 +6280,6 @@ Perl_yylex(pTHX)
                         }
                         else if (memEQc(pv, "native(")) {
                             /* also allow :symbol("C_NAME") with native */
-                            sv_free(sv);
                             CvEXTERN_on(PL_compcv);
                             goto load_attributes;
                         }
