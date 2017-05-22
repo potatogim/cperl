@@ -178,6 +178,7 @@ __END__
 +exists
 -exit
 -exp
++extern
 -fc
 -fcntl
 -fileno

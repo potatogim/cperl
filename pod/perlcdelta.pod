@@ -203,6 +203,9 @@ with deferring the attributes::import call after an assignment.
 
 See L<[cperl #294]|https://github.com/perl11/cperl/issues/294>.
 
+Support the new core attributes :native, :native($libname),
+:symbol($c_name), :nativeconv(abi), :encoded(encoding) I<(NYI)>.
+
 =item L<B> 1.68_07
 
 Add non-destructive $cv->PUREGV method, which does not create a GV
@@ -302,6 +305,10 @@ Bump version
 Implemented C<strict 'names'> to reject illegal identifiers created via
 C<no strict 'refs'> also at run-time, not only at compile-time.  See
 L<[cperl #282]|https://github.com/perl11/cperl/issues/282>.
+
+=item L<warnings> 1.38
+
+Added the new ffi warnings category.
 
 =item L<VMS::Studio> 2.41_01
 

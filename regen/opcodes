@@ -392,6 +392,7 @@ dorassign	defined or assignment (//=)	ck_null		s|
 method		method lookup		ck_method	d.
 entersub	subroutine entry	ck_subr		dm1	L
 enterxssub	XS subroutine entry	ck_subr		dm1	L
+enterffi	extern call  		ck_subr		dm1	L
 leavesub	subroutine exit		ck_null		1	
 leavesublv	lvalue subroutine return	ck_null		1	
 signature	subroutine signature processing	ck_null		+	
