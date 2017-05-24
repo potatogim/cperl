@@ -6182,15 +6182,14 @@ Perl_yylex(pTHX)
                         DEBUG_T(PerlIO_printf(Perl_debug_log,  "### evaluate :%s%s\n",
                                               SvPVX(sv), a));
                         a++;
-                        SvPVX(PL_lex_stuff)++;
+                        sv_chop(PL_lex_stuff, a);
                         SvCUR_set(PL_lex_stuff, l);
                         if (*a == '$') {
                             PADOFFSET pad = pad_findmy_sv(PL_lex_stuff, 0);
                             if (pad == NOT_IN_PAD) {
                                 if (!utf8)
                                     SvUTF8_off(PL_lex_stuff);
-                                SvPVX(PL_lex_stuff)++;
-                                SvCUR_set(PL_lex_stuff, l-1);
+                                sv_chop(PL_lex_stuff, a+1);
                                 arg = newGVOP(OP_GV, 0, gv_fetchsv(PL_lex_stuff, GV_ADDMULTI, SVt_PV));
                             }
                             else {
