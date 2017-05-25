@@ -6201,12 +6201,14 @@ Perl_yylex(pTHX)
                         } else { /* XXX bareword as call or const? for now only const asis */
                             arg = newSVOP(OP_CONST, 0, PL_lex_stuff);
                         }
-                        attrs = op_append_elem(OP_LIST, attrs,
-                                               op_prepend_elem(OP_LIST,
-                                                               newSVOP(OP_CONST, 0, sv),
-                                                               arg));
                         SvREFCNT_dec_NN(PL_lex_stuff);
                         PL_lex_stuff = NULL;
+                        /* defer the import to run-time, not at BEGIN{} as via apply_attrs() */
+                        FUN0OP(newSTATEOP(0, NULL,
+                            op_convert_list(OP_ENTERSUB, OPf_STACKED|OPf_SPECIAL|OPf_WANT_VOID,
+                                op_append_elem(OP_LIST,
+                                    op_prepend_elem(OP_LIST, newSVOP(OP_CONST, 0, sv), arg),
+                                               newMETHOP_named(OP_METHOD_NAMED, 0, newSVpvs_share("import"))))));
                     }
 		    COPLINE_SET_FROM_MULTI_END;
 		}
