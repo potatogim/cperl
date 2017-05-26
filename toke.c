@@ -6180,55 +6180,62 @@ Perl_yylex(pTHX)
                         char *a = SvPVX(PL_lex_stuff);
                         STRLEN l = SvCUR(PL_lex_stuff) - 2; /* without the parens */
                         U32 utf8 = SvUTF8(PL_lex_stuff);
+                        SV * sarg = newSVpvn_flags(a+1, l, utf8|SVs_TEMP);
                         OP *arg;
-                        DEBUG_T(PerlIO_printf(Perl_debug_log,  "### evaluate :%s%s\n",
+                        DEBUG_T(PerlIO_printf(Perl_debug_log,
+                                              "### compile-time or run-time :%s%s\n",
                                               SvPVX(sv), a));
-                        a++;
-                        sv_chop(PL_lex_stuff, a);
-                        SvCUR_set(PL_lex_stuff, l);
+                        a = skipspace(SvPVX(sarg));
                         if (*a == '$') {
-                            PADOFFSET pad = pad_findmy_sv(PL_lex_stuff, 0);
+                            PADOFFSET pad = pad_findmy_sv(sarg, 0);
                             if (pad == NOT_IN_PAD) {
                                 if (!utf8)
-                                    SvUTF8_off(PL_lex_stuff);
-                                sv_chop(PL_lex_stuff, a+1);
-                                arg = newGVOP(OP_GV, 0, gv_fetchsv(PL_lex_stuff, GV_ADDMULTI, SVt_PV));
+                                    SvUTF8_off(sarg);
+                                sv_chop(sarg, a+1);
+                                arg = newGVOP(OP_GV, 0,
+                                              gv_fetchsv(sarg, GV_ADDMULTI, SVt_PV));
                             }
                             else {
                                 arg = newOP(OP_PADSV, 0);
                                 arg->op_targ = pad;
                             }
                             defer_run_time = TRUE;
-                        } else if (*a == '"' || *a == '\'') {
-                            arg = newSVOP(OP_CONST, 0, PL_lex_stuff);
-                        } else { /* XXX bareword as call or const? for now only const asis */
-                            arg = newSVOP(OP_CONST, 0, PL_lex_stuff);
+                            /* defer the import to run-time. not at BEGIN{} as via apply_attrs() */
+                            pl_yylval.opval =
+                              op_append_elem(OP_LINESEQ, pl_yylval.opval,
+                                newSTATEOP(0, NULL,
+                                  op_convert_list(OP_ENTERSUB, OPf_STACKED|OPf_SPECIAL|OPf_WANT_VOID,
+                                    op_append_elem(OP_LIST,
+                                      op_prepend_elem(OP_LIST, newSVOP(OP_CONST, 0, sv), arg),
+                                        newMETHOP_named(OP_METHOD_NAMED, 0, newSVpvs_share("import"))))));
+                            SvCUR_set(PL_lex_stuff, 0);
                         }
-                        attrs = op_append_elem(OP_LIST, attrs,
-                                               op_prepend_elem(OP_LIST,
-                                                               newSVOP(OP_CONST, 0, sv),
-                                                               arg));
-                        /* XXX early exit, needs check for non-constant arg in apply_attrs() */
-                        COPLINE_SET_FROM_MULTI_END;
-                        SvREFCNT_dec_NN(PL_lex_stuff);
-                        PL_lex_stuff = NULL;
-                        PL_bufptr = d;
-                        NEXTVAL_NEXTTOKE.opval = attrs;
-                        force_next(THING);
-                        TOKEN(COLONATTR);
-
-                        /* defer the import to run-time, not at BEGIN{} as via apply_attrs() */
-                        /*
-                        FUN0OP(newSTATEOP(0, NULL,
-                            op_convert_list(OP_ENTERSUB, OPf_STACKED|OPf_SPECIAL|OPf_WANT_VOID,
-                                op_append_elem(OP_LIST,
-                                    op_prepend_elem(OP_LIST, newSVOP(OP_CONST, 0, sv), arg),
-                                       newMETHOP_named(OP_METHOD_NAMED, 0, newSVpvs_share("import"))))));
-                        */
+#if 0
+                        else if (*a == '"' || *a == '\'') {
+                            arg = newSVOP(OP_CONST, 0, sarg);
+                        } else { /* XXX bareword as call or const? for now only const asis */
+                            arg = newSVOP(OP_CONST, 0, sarg);
+                        }
+                        if (!defer_run_time) {
+                            /* compile-time lex_stuff, BEGIN import as string */
+                            attrs = op_append_elem(OP_LIST, attrs,
+                                                   op_prepend_elem(OP_LIST,
+                                                                   newSVOP(OP_CONST, 0, sv),
+                                                                   arg));
+                            /* XXX early exit, needs check for non-constant arg in apply_attrs() */
+                            COPLINE_SET_FROM_MULTI_END;
+                            SvREFCNT_dec_NN(PL_lex_stuff);
+                            PL_lex_stuff = NULL;
+                            PL_bufptr = d;
+                            NEXTVAL_NEXTTOKE.opval = attrs;
+                            force_next(THING);
+                            TOKEN(COLONATTR);
+                        }
+#endif
                     }
 		    COPLINE_SET_FROM_MULTI_END;
 		}
-                /* A proper (..) arg list set by scan_str. unparsed. copied verbatim. */
+                /* A proper (..) arg list set by scan_str. Unparsed to attributes->import. */
 		if (PL_lex_stuff) {
                     sv_catsv(sv, PL_lex_stuff);
                     attrs = op_append_elem(OP_LIST, attrs, newSVOP(OP_CONST, 0, sv));
