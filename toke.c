@@ -6138,6 +6138,7 @@ Perl_yylex(pTHX)
             while (isIDFIRST_lazy_if_safe(s, PL_bufend, UTF)) {
 		I32 tmp;
 		SV *sv;
+                bool defer_run_time = FALSE;
 		d = scan_word(s, PL_tokenbuf, sizeof PL_tokenbuf, FALSE, &len, &normalize);
 		if (isLOWER(*s) && (tmp = keyword(PL_tokenbuf, len, 0))) {
 		    if (tmp < 0) tmp = -tmp;
@@ -6168,6 +6169,7 @@ Perl_yylex(pTHX)
 			sv_free(sv);
                         Perl_croak(aTHX_ "Unterminated attribute parameter in attribute list");
 		    }
+                    /* handle run-time variables in attrs args */
                     if (len == 6 && (memEQc(s, "native") || memEQc(s, "symbol"))) {
                         /* evaluate scalars and barewords, resp. add CONST strings.
                              :native($lib) :native("mysqlclient") :native(msqlclient) :symbol('c_sym')
@@ -6196,25 +6198,40 @@ Perl_yylex(pTHX)
                                 arg = newOP(OP_PADSV, 0);
                                 arg->op_targ = pad;
                             }
+                            defer_run_time = TRUE;
                         } else if (*a == '"' || *a == '\'') {
                             arg = newSVOP(OP_CONST, 0, PL_lex_stuff);
                         } else { /* XXX bareword as call or const? for now only const asis */
                             arg = newSVOP(OP_CONST, 0, PL_lex_stuff);
                         }
+                        attrs = op_append_elem(OP_LIST, attrs,
+                                               op_prepend_elem(OP_LIST,
+                                                               newSVOP(OP_CONST, 0, sv),
+                                                               arg));
+                        /* XXX early exit, needs check for non-constant arg in apply_attrs() */
+                        COPLINE_SET_FROM_MULTI_END;
                         SvREFCNT_dec_NN(PL_lex_stuff);
                         PL_lex_stuff = NULL;
+                        PL_bufptr = d;
+                        NEXTVAL_NEXTTOKE.opval = attrs;
+                        force_next(THING);
+                        TOKEN(COLONATTR);
+
                         /* defer the import to run-time, not at BEGIN{} as via apply_attrs() */
+                        /*
                         FUN0OP(newSTATEOP(0, NULL,
                             op_convert_list(OP_ENTERSUB, OPf_STACKED|OPf_SPECIAL|OPf_WANT_VOID,
                                 op_append_elem(OP_LIST,
                                     op_prepend_elem(OP_LIST, newSVOP(OP_CONST, 0, sv), arg),
-                                               newMETHOP_named(OP_METHOD_NAMED, 0, newSVpvs_share("import"))))));
+                                       newMETHOP_named(OP_METHOD_NAMED, 0, newSVpvs_share("import"))))));
+                        */
                     }
 		    COPLINE_SET_FROM_MULTI_END;
 		}
+                /* A proper (..) arg list set by scan_str. unparsed. copied verbatim. */
 		if (PL_lex_stuff) {
-		    sv_catsv(sv, PL_lex_stuff);
-		    attrs = op_append_elem(OP_LIST, attrs, newSVOP(OP_CONST, 0, sv));
+                    sv_catsv(sv, PL_lex_stuff);
+                    attrs = op_append_elem(OP_LIST, attrs, newSVOP(OP_CONST, 0, sv));
 		    SvREFCNT_dec_NN(PL_lex_stuff);
 		    PL_lex_stuff = NULL;
 		}
@@ -6298,16 +6315,7 @@ Perl_yylex(pTHX)
                     else if (find_in_coretypes(pv, len))
                         sv_free(sv);
 #endif
-		    /* After we've set the flags, it could be argued that
-		       we don't need to do the attributes.pm-based setting
-		       process, and shouldn't bother appending recognized
-		       flags.  To experiment with that, uncomment the
-		       following "else".  (Note that's already been
-		       uncommented.  That keeps the above-applied built-in
-		       attributes from being intercepted (and possibly
-		       rejected) by a package's attribute routines, but is
-		       justified by the performance win for the common case
-		       of applying only built-in attributes.) */
+		    /* Handle only the rest via attributes->import */
 		    else {
                       load_attributes:
 		        attrs = op_append_elem(OP_LIST, attrs, newSVOP(OP_CONST, 0, sv));

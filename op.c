@@ -4326,6 +4326,10 @@ S_dup_attrlist(pTHX_ OP *o)
 Calls the attribute importer with the target and a list of attributes.
 As manually done via C<use attributes $pkg, $rv, @attrs>.
 
+cperl extension: with non-constant attrs arguments defer the import
+to run-time. [cperl #291]
+perl5 cannot handle run-time args like :native($lib).
+
 =cut
 */
 static void
