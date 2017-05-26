@@ -4321,14 +4321,45 @@ S_dup_attrlist(pTHX_ OP *o)
 }
 
 /*
+=for apidoc attrs_runtime
+
+Extract the run-time part of attributes with arguments,
+i.e. variables, not just constant barewords or strings.
+
+=cut
+*/
+OP*
+Perl_attrs_runtime(pTHX_ CV *cv, OP *attrs)
+{
+    PERL_ARGS_ASSERT_ATTRS_RUNTIME;
+    {
+        OP *o = attrs;
+	HV *stash = !CvNAMED(cv) && GvSTASH(CvGV(cv))
+                      ? GvSTASH(CvGV(cv))
+                      : PL_curstash;
+        /* check for run-time variables */
+        for (; o; o = OpKIDS(o) ? OpFIRST(o) : OpSIBLING(o)) {
+            if (IS_TYPE(o, PADSV) || IS_TYPE(o, GV)) {
+                OP *result;
+                OP *target = newOP(OP_NULL,0); /* avoid the my part */
+                apply_attrs_my(stash, target, attrs, &result);
+                return result;
+            }
+        }
+    }
+    return NULL;
+}
+
+/*
 =for apidoc apply_attrs
 
 Calls the attribute importer with the target and a list of attributes.
-As manually done via C<use attributes $pkg, $rv, @attrs>.
+As manually done via C<BEGIN{ require; attributes->import($pkg, $rv, @attrs)} >.
 
-cperl extension: with non-constant attrs arguments defer the import
-to run-time. [cperl #291]
-perl5 cannot handle run-time args like :native($lib).
+See L</apply_attrs_my> for the variant which defers the import call to run-time,
+enabling run-time attribute arguments, i.e. variables, not only constant barewords,
+and see L</attrs_runtime> which extracts the run-time part of attrs.
+
 
 =cut
 */
@@ -4338,22 +4369,28 @@ S_apply_attrs(pTHX_ HV *stash, SV *target, OP *attrs)
     PERL_ARGS_ASSERT_APPLY_ATTRS;
     {
         SV * const stashsv = newSVhek(HvNAME_HEK(stash));
+        OP *o = attrs;
+        /* skip run-time variables */
+        for (; o; o = OpKIDS(o) ? OpFIRST(o) : OpSIBLING(o)) {
+            if (IS_TYPE(o, PADSV) || IS_TYPE(o, GV)) {
+                return;
+            }
+        }
 
         /* fake up C<use attributes $pkg,$rv,@attrs> */
 
 #define ATTRSMODULE "attributes"
 #define ATTRSMODULE_PM "attributes.pm"
 
-        Perl_load_module(
-          aTHX_ PERL_LOADMOD_IMPORT_OPS,
+        Perl_load_module(aTHX_
+          PERL_LOADMOD_IMPORT_OPS,
           newSVpvs(ATTRSMODULE),
           NULL,
           op_prepend_elem(OP_LIST,
-                          newSVOP(OP_CONST, 0, stashsv),
-                          op_prepend_elem(OP_LIST,
-                                          newSVOP(OP_CONST, 0,
-                                                  newRV(target)),
-                                          dup_attrlist(attrs))));
+              newSVOP(OP_CONST, 0, stashsv),
+              op_prepend_elem(OP_LIST,
+                  newSVOP(OP_CONST, 0, newRV(target)),
+                  dup_attrlist(attrs))));
     }
 }
 
@@ -4361,10 +4398,16 @@ S_apply_attrs(pTHX_ HV *stash, SV *target, OP *attrs)
 =for apidoc apply_attrs_my
 
 Similar to L</apply_attrs> calls the attribute importer with the
-target, which must be a lexical and a list of attributes.  As manually
-done via C<use attributes $pkg, $rv, @attrs>.
+target and a list of attributes. 
+
+As manually done via C<use attributes $pkg, $rv, @attrs>.
+But contrary to L</apply_attrs> this defers C<attributes->import()> to run-time.
 
 Returns the list of attributes in the **imopsp argument.
+
+Used in cperl with non-constant attrs arguments to defer the import
+to run-time. [cperl #291]
+perl5 cannot handle run-time args like :native($lib).
 
 =cut
 */
@@ -4378,8 +4421,6 @@ S_apply_attrs_my(pTHX_ HV *stash, OP *target, OP *attrs, OP **imopsp)
 
     if (!attrs)
 	return;
-
-    assert(IS_PADxV_OP(target));
 
     /* Ensure that attributes.pm is loaded. */
     /* Don't force the C<use> if we don't need it. */
@@ -4396,21 +4437,23 @@ S_apply_attrs_my(pTHX_ HV *stash, OP *target, OP *attrs, OP **imopsp)
     /* Build up the real arg-list. */
     stashsv = newSVhek(HvNAME_HEK(stash));
 
-    arg = newOP(OP_PADSV, 0);
-    arg->op_targ = target->op_targ;
-    arg = op_prepend_elem(OP_LIST,
-		       newSVOP(OP_CONST, 0, stashsv),
-		       op_prepend_elem(OP_LIST,
-				    newUNOP(OP_REFGEN, 0,
-					    arg),
-				    dup_attrlist(attrs)));
+    if (IS_PADxV_OP(target)) {
+        arg = newOP(OP_PADSV, 0);
+        arg->op_targ = target->op_targ;
+        arg = op_prepend_elem(OP_LIST,
+                              newSVOP(OP_CONST, 0, stashsv),
+                              op_prepend_elem(OP_LIST,
+                                              newUNOP(OP_REFGEN, 0, arg),
+                                              dup_attrlist(attrs)));
+        arg = op_prepend_elem(OP_LIST, pack, arg);
+    } else
+        arg = pack;
 
     /* Fake up a method call to import */
     meth = newSVpvs_share("import");
     imop = op_convert_list(OP_ENTERSUB, OPf_STACKED|OPf_SPECIAL|OPf_WANT_VOID,
-		   op_append_elem(OP_LIST,
-			       op_prepend_elem(OP_LIST, pack, arg),
-			       newMETHOP_named(OP_METHOD_NAMED, 0, meth)));
+               op_append_elem(OP_LIST, arg,
+                              newMETHOP_named(OP_METHOD_NAMED, 0, meth)));
 
     /* Combine the ops. */
     *imopsp = op_append_elem(OP_LIST, *imopsp, imop);
@@ -4446,28 +4489,31 @@ Perl_apply_attrs_string(pTHX_ const char *stashpv, CV *cv,
     }
 
     while (len) {
+        /* XXX Latin1 only, no utf8 ATTRS */
         for (; isSPACE(*attrstr) && len; --len, ++attrstr) ;
         if (len) {
             const char * const sstr = attrstr;
             for (; !isSPACE(*attrstr) && len; --len, ++attrstr) ;
             attrs = op_append_elem(OP_LIST, attrs,
-                                newSVOP(OP_CONST, 0,
-                                        newSVpvn(sstr, attrstr-sstr)));
+                        newSVOP(OP_CONST, 0, newSVpvn(sstr, attrstr-sstr)));
         }
     }
 
-    Perl_load_module(aTHX_ PERL_LOADMOD_IMPORT_OPS,
-		     newSVpvs(ATTRSMODULE),
-                     NULL, op_prepend_elem(OP_LIST,
-				  newSVOP(OP_CONST, 0, newSVpv(stashpv,0)),
-				  op_prepend_elem(OP_LIST,
-					       newSVOP(OP_CONST, 0,
-						       newRV(MUTABLE_SV(cv))),
-                                               attrs)));
+    Perl_load_module(aTHX_
+        PERL_LOADMOD_IMPORT_OPS,
+	newSVpvs(ATTRSMODULE),
+        NULL,
+        op_prepend_elem(OP_LIST,
+            newSVOP(OP_CONST, 0, newSVpv(stashpv,0)),
+            op_prepend_elem(OP_LIST,
+                newSVOP(OP_CONST, 0, newRV(MUTABLE_SV(cv))),
+                attrs)));
 }
 
 /*
 =for apidoc move_proto_attr
+
+Set CV prototype in name from :prototype() attribute.
 =cut
 */
 static void
@@ -9906,7 +9952,7 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
 
     if (block && has_name) {
 	if (PERLDB_SUBLINE && PL_curstash != PL_debstash) {
-	    SV * const tmpstr = cv_name(cv, NULL, CV_NAME_NOMAIN);
+	    SV * const cvname = cv_name(cv, NULL, CV_NAME_NOMAIN);
 	    GV * const db_postponed = gv_fetchpvs("DB::postponed",
 						  GV_ADDMULTI, SVt_PVHV);
 	    HV *hv;
@@ -9914,15 +9960,14 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
 					  CopFILE(PL_curcop),
 					  (long)PL_subline,
 					  (long)CopLINE(PL_curcop));
-	    (void)hv_store(GvHV(PL_DBsub), SvPVX_const(tmpstr),
-		    SvUTF8(tmpstr) ? -(I32)SvCUR(tmpstr) : (I32)SvCUR(tmpstr), sv, 0);
+	    hv_store_ent_void(GvHV(PL_DBsub), cvname, sv, 0);
 	    hv = GvHVn(db_postponed);
-	    if (HvTOTALKEYS(hv) > 0 && hv_exists(hv, SvPVX_const(tmpstr), SvUTF8(tmpstr) ? -(I32)SvCUR(tmpstr) : (I32)SvCUR(tmpstr))) {
+	    if (HvTOTALKEYS(hv) > 0 && hv_exists_ent(hv, cvname, 0)) {
 		CV * const pcv = GvCV(db_postponed);
 		if (pcv) {
 		    dSP;
 		    PUSHMARK(SP);
-		    XPUSHs(tmpstr);
+		    XPUSHs(cvname);
 		    PUTBACK;
 		    call_sv(MUTABLE_SV(pcv), G_DISCARD);
 		}
@@ -9933,8 +9978,7 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
             if (PL_parser && PL_parser->error_count)
                 clear_special_blocks(name, gv, cv);
             else
-                evanescent =
-                    process_special_blocks(floor, name, gv, cv);
+                evanescent = process_special_blocks(floor, name, gv, cv);
         }
     }
 

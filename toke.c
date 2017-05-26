@@ -6138,7 +6138,6 @@ Perl_yylex(pTHX)
             while (isIDFIRST_lazy_if_safe(s, PL_bufend, UTF)) {
 		I32 tmp;
 		SV *sv;
-                bool defer_run_time = FALSE;
 		d = scan_word(s, PL_tokenbuf, sizeof PL_tokenbuf, FALSE, &len, &normalize);
 		if (isLOWER(*s) && (tmp = keyword(PL_tokenbuf, len, 0))) {
 		    if (tmp < 0) tmp = -tmp;
@@ -6199,46 +6198,26 @@ Perl_yylex(pTHX)
                                 arg = newOP(OP_PADSV, 0);
                                 arg->op_targ = pad;
                             }
-                            defer_run_time = TRUE;
-                            /* defer the import to run-time. not at BEGIN{} as via apply_attrs() */
-                            pl_yylval.opval =
-                              op_append_elem(OP_LINESEQ, pl_yylval.opval,
-                                newSTATEOP(0, NULL,
-                                  op_convert_list(OP_ENTERSUB, OPf_STACKED|OPf_SPECIAL|OPf_WANT_VOID,
-                                    op_append_elem(OP_LIST,
-                                      op_prepend_elem(OP_LIST, newSVOP(OP_CONST, 0, sv), arg),
-                                        newMETHOP_named(OP_METHOD_NAMED, 0, newSVpvs_share("import"))))));
-                            SvCUR_set(PL_lex_stuff, 0);
                         }
-#if 0
+                        /* compile-time import */
                         else if (*a == '"' || *a == '\'') {
                             arg = newSVOP(OP_CONST, 0, sarg);
                         } else { /* XXX bareword as call or const? for now only const asis */
                             arg = newSVOP(OP_CONST, 0, sarg);
                         }
-                        if (!defer_run_time) {
-                            /* compile-time lex_stuff, BEGIN import as string */
-                            attrs = op_append_elem(OP_LIST, attrs,
-                                                   op_prepend_elem(OP_LIST,
-                                                                   newSVOP(OP_CONST, 0, sv),
-                                                                   arg));
-                            /* XXX early exit, needs check for non-constant arg in apply_attrs() */
-                            COPLINE_SET_FROM_MULTI_END;
-                            SvREFCNT_dec_NN(PL_lex_stuff);
-                            PL_lex_stuff = NULL;
-                            PL_bufptr = d;
-                            NEXTVAL_NEXTTOKE.opval = attrs;
-                            force_next(THING);
-                            TOKEN(COLONATTR);
-                        }
-#endif
+                        SvCUR_set(PL_lex_stuff, 0);
+                        arg = op_prepend_elem(OP_LIST,
+                                              newSVOP(OP_CONST, 0, newSVpvn(s, len)), arg);
+                        attrs = op_append_elem(OP_LIST, attrs, arg);
                     }
 		    COPLINE_SET_FROM_MULTI_END;
 		}
                 /* A proper (..) arg list set by scan_str. Unparsed to attributes->import. */
 		if (PL_lex_stuff) {
-                    sv_catsv(sv, PL_lex_stuff);
-                    attrs = op_append_elem(OP_LIST, attrs, newSVOP(OP_CONST, 0, sv));
+                    if (SvCUR(PL_lex_stuff)) {
+                        sv_catsv(sv, PL_lex_stuff);
+                        attrs = op_append_elem(OP_LIST, attrs, newSVOP(OP_CONST, 0, sv));
+                    }
 		    SvREFCNT_dec_NN(PL_lex_stuff);
 		    PL_lex_stuff = NULL;
 		}

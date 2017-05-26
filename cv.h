@@ -255,7 +255,9 @@ See L<perlguts/Autoloading with XSUBs>.
 #define CvPURE_on(cv)		(CvFLAGS(cv) |= CVf_PURE)
 #define CvSTATIC(cv)		(CvFLAGS(cv) & CVf_STATIC)
 #define CvEXTERN(cv)		(CvFLAGS(cv) & CVf_EXTERN)
-#define CvEXTERN_on(cv)		(CvFLAGS(cv) |= (CVf_EXTERN|CVf_ISXSUB))
+#ifdef PERL_CORE
+#define CvEXTERN_on(cv)		(CvFLAGS(cv) |= (CVf_EXTERN|CVf_ISXSUB), CvSLABBED_off(cv))
+#endif
 
 #define CvMULTI(cv)             0
 
