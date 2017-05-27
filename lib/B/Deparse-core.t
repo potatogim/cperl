@@ -317,7 +317,8 @@ testit split    => 'split $a, $b, $c;',          q{split(/$a/u, $b, $c);};
 testit split    => 'CORE::split $a, $b, $c;',    q{split(/$a/u, $b, $c);};
 
 testit sub      => 'CORE::sub { $a, $b }',
-			"sub {\n        \$a, \$b;\n    }\n    ;";
+		   "sub {\n        \$a, \$b;\n    }\n    ;";
+testit extern   => 'extern sub a ();',	 	 'extern sub a ();';
 
 testit system   => 'CORE::system($foo $bar);';
 
@@ -367,6 +368,7 @@ my %not_tested = map { $_ => 1} qw(
     default
     else
     elsif
+    extern
     for
     foreach
     format
