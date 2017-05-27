@@ -196,6 +196,9 @@ with deferring the attributes::import call after an assignment.
 
 See L<[cperl #294]|https://github.com/perl11/cperl/issues/294>.
 
+Support the new core attributes :native, :native($libname),
+:symbol($c_name).
+
 =item L<B> 1.68_07
 
 Add non-destructive $cv->PUREGV method, which does not create a GV
@@ -281,6 +284,7 @@ Improve some tests on missing network connections
 =item L<Opcode> 1.39_02c
 
 Added new 'oelem' and 'oelemfast' to :base_core
+Restrict the new ops 'enterffi', 'leaveffi'.
 
 =item L<Search::Dict> 1.07_01
 

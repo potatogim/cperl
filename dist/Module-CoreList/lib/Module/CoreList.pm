@@ -15034,6 +15034,7 @@ our %delta = (
             'Metamodel'             => '',
             'Mu'                    => '0.01c',
             'Net::Ping'             => '2.61',
+            'Opcode'                => '1.39_02c',
             'Search::Dict'          => '1.07_01',
             'SelectSaver'           => '1.02_01',
             'strict'                => '1.13c',
