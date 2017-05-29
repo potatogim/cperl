@@ -3629,7 +3629,8 @@ Perl_op_lvalue_flags(pTHX_ OP *o, I32 type, U32 flags)
     case OP_ENTERXSSUB:
     case OP_ENTERFFI:
 	if ((type == OP_UNDEF || type == OP_REFGEN || type == OP_LOCK)
-            && !OpSTACKED(o)) {
+            && !OpSTACKED(o))
+        {
             OpTYPE_set(o, OP_RV2CV);		/* entersub => rv2cv */
 	    assert(IS_NULL_OP(OpFIRST(o)));
 	    op_null(OpFIRST(OpFIRST(o)));       /* disable pushmark */
@@ -7863,18 +7864,13 @@ S_new_entersubop(pTHX_ GV *gv, OP *arg)
 OP *
 Perl_dofile(pTHX_ OP *term, I32 force_builtin)
 {
-    OP *doop;
     GV *gv;
-
     PERL_ARGS_ASSERT_DOFILE;
 
-    if (!force_builtin && (gv = gv_override("do", 2))) {
-	doop = S_new_entersubop(aTHX_ gv, term);
-    }
-    else {
-	doop = newUNOP(OP_DOFILE, 0, scalar(term));
-    }
-    return doop;
+    if (!force_builtin && (gv = gv_override("do", 2)))
+	return S_new_entersubop(aTHX_ gv, term);
+    else
+	return newUNOP(OP_DOFILE, 0, scalar(term));
 }
 
 /*
@@ -9672,11 +9668,14 @@ Perl_newMYSUB(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs, OP *block)
 	}
 	block = CvLVALUE(compcv)
 	     || (cv && CvLVALUE(cv) && !CvROOT(cv) && !CvXSUB(cv))
-		   ? newUNOP(OP_LEAVESUBLV, 0,
-			     op_lvalue(scalarseq(block), OP_LEAVESUBLV))
-		   : newUNOP(OP_LEAVESUB, 0, scalarseq(block));
+            ? newUNOP(OP_LEAVESUBLV, 0,
+                      op_lvalue(scalarseq(block), OP_LEAVESUBLV))
+            : CvEXTERN(cv)
+                ? newUNOP(OP_LEAVEFFI, 0, scalarseq(block))
+                : newUNOP(OP_LEAVESUB, 0, scalarseq(block));
 	start = LINKLIST(block);
 	OpNEXT(block) = NULL;
+        /* XXX attrs might be :const */
         if (ps && !*ps && !attrs && !CvLVALUE(compcv))
             const_sv = op_const_sv(start, compcv, FALSE);
     }
@@ -10100,11 +10099,13 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
 	    PL_parser->copline = l;
 	}
 	block = CvLVALUE(PL_compcv)
-	     || (cv && CvLVALUE(cv) && !CvROOT(cv) && !CvXSUB(cv)
-		    && (!isGV(gv) || !GvASSUMECV(gv)))
-		   ? newUNOP(OP_LEAVESUBLV, 0,
-			     op_lvalue(scalarseq(block), OP_LEAVESUBLV))
-		   : newUNOP(OP_LEAVESUB, 0, scalarseq(block));
+            || (cv && CvLVALUE(cv) && !CvROOT(cv) && !CvXSUB(cv)
+                && (!isGV(gv) || !GvASSUMECV(gv)))
+            ? newUNOP(OP_LEAVESUBLV, 0,
+                      op_lvalue(scalarseq(block), OP_LEAVESUBLV))
+            : CvEXTERN(PL_compcv)
+                ? newUNOP(OP_LEAVEFFI, 0, scalarseq(block))
+	        : newUNOP(OP_LEAVESUB, 0, scalarseq(block));
 	start = LINKLIST(block);
 	OpNEXT(block) = NULL;
         /* XXX attrs might be :const */
@@ -10246,8 +10247,7 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
 	    cv_flags_t existing_builtin_attrs = CvFLAGS(cv) & CVf_BUILTIN_ATTRS;
 	    PADLIST *const temp_av = CvPADLIST(cv);
 	    CV *const temp_cv = CvOUTSIDE(cv);
-	    const cv_flags_t other_flags =
-		CvFLAGS(cv) & (CVf_SLABBED|CVf_WEAKOUTSIDE);
+	    const cv_flags_t other_flags = CvFLAGS(cv) & (CVf_SLABBED|CVf_WEAKOUTSIDE);
 	    OP * const cvstart = CvSTART(cv);
 
 	    if (isGV(gv)) {
@@ -15023,7 +15023,7 @@ Perl_ck_entersub_args_proto_or_list(pTHX_ OP *entersubop,
     DEBUG_kv(Perl_deb(aTHX_ "ck_entersub %s %" SVf "\n",
                      SvTYPE(protosv) == SVt_PVCV
                        ? "CV" : SvTYPE(protosv) == SVt_PVGV
-                       ? "GV" : "RV",
+                         ? "GV" : "RV",
                      SVfARG(cv_name((CV*)protosv, NULL, CV_NAME_NOMAIN))));
     if (LIKELY(SvTYPE(protosv) == SVt_PVCV)) {
         CV* cv = (CV*)protosv;
@@ -15034,7 +15034,12 @@ Perl_ck_entersub_args_proto_or_list(pTHX_ OP *entersubop,
                      ) && CvMETHOD(cv)))
             Perl_croak(aTHX_ "Invalid subroutine call on class method %" SVf,
                        SVfARG(cv_name(cv,NULL,CV_NAME_NOMAIN)));
-        if (CvHASSIG(cv) && CvSIGOP(cv)) {
+        if (CvEXTERN(cv)) {
+            DEBUG_k(Perl_deb(aTHX_ "entersub -> ffi %" SVf "\n",
+                SVfARG(cv_name(cv, NULL, CV_NAME_NOMAIN))));
+            OpTYPE_set(entersubop, OP_ENTERFFI);
+        }
+        if (CvHASSIG(cv) && CvSIGOP(cv)) { /* 99% if ffi goes here */
             if (UNLIKELY(PERLDB_SUB)) {
                 (void)ck_entersub_args_signature(entersubop, namegv, cv);
                 S_debug_undo_signature(aTHX_ cv);
