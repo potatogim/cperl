@@ -179,10 +179,10 @@ static const char array_passed_to_stat[] =
 #if PTRSIZE == 8
 #define VALIDTYPE(stash) (stash && PTR2IV(stash) > 0x1000 \
                           && PTR2IV(stash) < 0x1000000000000  \
-                          && SvTYPE(stash) == SVt_PVHV)
+                          && SvIS_TYPE(stash, PVHV))
 #else
 #define VALIDTYPE(stash) (stash && PTR2IV(stash) > 0x1000 \
-                          && SvTYPE(stash) == SVt_PVHV)
+                          && SvIS_TYPE(stash, PVHV))
 #endif
 
 #define IS_TYPE(o, type)   OP_TYPE_IS_NN((o), OP_##type)
@@ -945,7 +945,7 @@ Perl_alloccopstash(pTHX_ HV *hv)
 
     for (; o < PL_stashpadmax; ++o) {
 	if (PL_stashpad[o] == hv) return PL_stashpadix = o;
-	if (!PL_stashpad[o] || SvTYPE(PL_stashpad[o]) != SVt_PVHV)
+	if (!PL_stashpad[o] || SvISNT_TYPE(PL_stashpad[o], PVHV))
 	    found_slot = TRUE, off = o;
     }
     if (!found_slot) {
@@ -3272,7 +3272,7 @@ S_finalize_op(pTHX_ OP* o)
     case OP_GV:
 	if ((o->op_private & OPpEARLY_CV) && ckWARN(WARN_PROTOTYPE)) {
 	    GV * const gv = cGVOPo_gv;
-	    if (SvTYPE(gv) == SVt_PVGV && GvCV(gv) && SvPVX_const(GvCV(gv))) {
+	    if (SvIS_TYPE(gv, PVGV) && GvCV(gv) && SvPVX_const(GvCV(gv))) {
 		/* XXX could check prototype here instead of just carping */
 		SV * const sv = sv_newmortal();
 		gv_efullname3(sv, gv, NULL);
@@ -3673,7 +3673,7 @@ Perl_op_lvalue_flags(pTHX_ OP *o, I32 type, U32 flags)
 		gv = kGVOP_gv;
 		cv = isGV(gv)
 		    ? GvCV(gv)
-		    : SvROK(gv) && SvTYPE(SvRV(gv)) == SVt_PVCV
+		    : SvROK(gv) && SvIS_TYPE(SvRV(gv), PVCV)
 			? MUTABLE_CV(SvRV(gv))
 			: NULL;
 		if (!cv)
@@ -4707,7 +4707,7 @@ Perl_newASSIGNOP_maybe_const(pTHX_ OP *left, I32 optype, OP *right)
             if (IS_CONST_OP(right)) {
                 SV* lsv = PAD_SV(left->op_targ);
                 SV *rsv = cSVOPx_sv(right);
-                if (SvTYPE(lsv) == SVt_NULL || SvTYPE(lsv) == SvTYPE(rsv)) {
+                if (SvIS_TYPE(lsv, NULL) || SvTYPE(lsv) == SvTYPE(rsv)) {
                     DEBUG_k(Perl_deb(aTHX_ "my %s :const = %s\n",
                                      PAD_COMPNAME_PV(left->op_targ), SvPEEK(rsv)));
                     SvSetMagicSV(lsv, SvREFCNT_inc_NN(rsv));
@@ -4715,7 +4715,7 @@ Perl_newASSIGNOP_maybe_const(pTHX_ OP *left, I32 optype, OP *right)
                     SvREADONLY_on(lsv);
                     op_free(right);
                     assign = ck_pad(left);
-                } else if (SvTYPE(lsv) == SVt_PVAV) {
+                } else if (SvIS_TYPE(lsv, PVAV)) {
                     DEBUG_k(Perl_deb(aTHX_ "my %s[1] :const = (%s)\n",
                                      PAD_COMPNAME_PV(left->op_targ), SvPEEK(rsv)));
                     AvSHAPED_on((AV*)lsv); /* XXX we can even type it */
@@ -4788,7 +4788,7 @@ Perl_newASSIGNOP_maybe_const(pTHX_ OP *left, I32 optype, OP *right)
             SV *rsv = cSVOPx_sv(right);
             SV *lsv = GvSV(gv);
             assert(IS_TYPE(OpFIRST(left), GV));
-            if (SvTYPE(lsv) == SVt_NULL || SvTYPE(lsv) == SvTYPE(rsv)) {
+            if (SvIS_TYPE(lsv, NULL) || SvTYPE(lsv) == SvTYPE(rsv)) {
                 DEBUG_k(Perl_deb(aTHX_ "our $%s :const = %s\n",
                                  SvPEEK(lsv), SvPEEK(rsv)));
                 SvSetMagicSV(lsv, SvREFCNT_inc_NN(rsv));
@@ -9287,10 +9287,10 @@ Perl_cv_ckproto_len_flags(pTHX_ const CV *cv, const GV *gv, const char *p,
 {
     SV *name = NULL, *msg;
     const char * cvp = SvROK(cv)
-			? SvTYPE(SvRV_const(cv)) == SVt_PVCV
-			   ? (cv = (const CV *)SvRV_const(cv), CvPROTO(cv))
-			   : ""
-			: CvPROTO(cv);
+        ? SvIS_TYPE(SvRV_const(cv), PVCV)
+          ? (cv = (const CV *)SvRV_const(cv), CvPROTO(cv))
+          : ""
+        : CvPROTO(cv);
     STRLEN clen = CvPROTOLEN(cv), plen = len;
 
     PERL_ARGS_ASSERT_CV_CKPROTO_LEN_FLAGS;
@@ -9331,7 +9331,7 @@ Perl_cv_ckproto_len_flags(pTHX_ const CV *cv, const GV *gv, const char *p,
 	    name = sv_2mortal(newSVhek(HvNAME_HEK(PL_curstash)));
 	    sv_catpvs(name, "::");
 	    if (SvROK(gv)) {
-		assert (SvTYPE(SvRV_const(gv)) == SVt_PVCV);
+		assert (SvIS_TYPE(SvRV_const(gv), PVCV));
 		assert (CvNAMED(SvRV_const(gv)));
 		sv_cathek(name, CvNAME_HEK(MUTABLE_CV(SvRV_const(gv))));
 	    }
@@ -9379,10 +9379,10 @@ Perl_cv_const_sv(const CV *const cv)
     SV *sv;
     if (!cv)
 	return NULL;
-    if (!(SvTYPE(cv) == SVt_PVCV || SvTYPE(cv) == SVt_PVFM))
+    if (!(SvIS_TYPE(cv, PVCV) || SvIS_TYPE(cv, PVFM)))
 	return NULL;
     sv = CvCONST(cv) ? MUTABLE_SV(CvXSUBANY(cv).any_ptr) : NULL;
-    if (sv && SvTYPE(sv) == SVt_PVAV) return NULL;
+    if (sv && SvIS_TYPE(sv, PVAV)) return NULL;
     return sv;
 }
 
@@ -9392,7 +9392,7 @@ Perl_cv_const_sv_or_av(const CV * const cv)
     if (!cv)
 	return NULL;
     if (SvROK(cv)) return SvRV((SV *)cv);
-    assert (SvTYPE(cv) == SVt_PVCV || SvTYPE(cv) == SVt_PVFM);
+    assert (SvIS_TYPE(cv, PVCV) || SvIS_TYPE(cv, PVFM));
     return CvCONST(cv) ? MUTABLE_SV(CvXSUBANY(cv).any_ptr) : NULL;
 }
 
@@ -9590,7 +9590,7 @@ Perl_newMYSUB(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs, OP *block)
     else if (PadnameIsSTATE(name) || CvDEPTH(outcv))
 	cv = *spot;
     else {
-	assert (SvTYPE(*spot) == SVt_PVCV);
+	assert (SvIS_TYPE(*spot, PVCV));
 	if (CvNAMED(*spot))
 	    hek = CvNAME_HEK(*spot);
 	else {
@@ -9984,13 +9984,13 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
 	goto done;
     }
 
-    if (!block && SvTYPE(gv) != SVt_PVGV) {
+    if (!block && SvISNT_TYPE(gv, PVGV)) {
         /* If we are not defining a new sub and the existing one is not a
            full GV + CV... */
         if (attrs || (CvFLAGS(PL_compcv) & CVf_BUILTIN_ATTRS)) {
             /* We are applying attributes to an existing sub, so we need it
                upgraded if it is a constant.  */
-            if (SvROK(gv) && SvTYPE(SvRV(gv)) != SVt_PVCV)
+            if (SvROK(gv) && SvISNT_TYPE(SvRV(gv), PVCV))
                 gv_init_pvn(gv, PL_curstash, name, namlen,
                             SVf_UTF8 * name_is_utf8);
         }
@@ -10034,7 +10034,7 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
 	? NULL
 	: isGV(gv)
 	    ? GvCV(gv)
-	    : SvROK(gv) && SvTYPE(SvRV(gv)) == SVt_PVCV
+	    : SvROK(gv) && SvIS_TYPE(SvRV(gv), PVCV)
 		? (CV *)SvRV(gv)
 		: NULL;
 
@@ -10082,7 +10082,7 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
          */
 	const_sv = op_const_sv(start, PL_compcv, cBOOL(CvCLONE(PL_compcv)));
 
-    if (SvPOK(gv) || (SvROK(gv) && SvTYPE(SvRV(gv)) != SVt_PVCV)) {
+    if (SvPOK(gv) || (SvROK(gv) && SvISNT_TYPE(SvRV(gv), PVCV))) {
 	cv_ckproto_len_flags((const CV *)gv,
 			     o ? (const GV *)cSVOPo->op_sv : NULL, ps,
 			     ps_len, ps_utf8|CV_CKPROTO_CURSTASH);
@@ -10545,7 +10545,7 @@ Perl_newCONSTSUB_flags(pTHX_ HV *stash, const char *name, STRLEN len,
        processor __FILE__ directive). But we need a dynamically allocated one,
        and we need it to get freed.  */
     cv = newXS_len_flags(name, len,
-			 sv && SvTYPE(sv) == SVt_PVAV
+			 sv && SvIS_TYPE(sv, PVAV)
 			     ? S_const_av_xsub
 			     : S_const_sv_xsub,
 			 file ? file : "", "",
@@ -11475,7 +11475,7 @@ Perl_ck_rvconst(pTHX_ OP *o)
 	if ((SvROK(kidsv) || isGV_with_GP(kidsv)) && SvREADONLY(kidsv)) {
 	    return o;
 	}
-	if (SvTYPE(kidsv) == SVt_PVAV) return o;
+	if (SvIS_TYPE(kidsv, PVAV)) return o;
 	if ((OpPRIVATE(o) & HINT_STRICT_REFS) && (OpPRIVATE(kid) & OPpCONST_BARE)) {
 	    const char *badthing;
 	    switch (o->op_type) {
@@ -11535,7 +11535,7 @@ Perl_ck_rvconst(pTHX_ OP *o)
 		assert(iscv);
 		assert(SvROK(gv));
 		if (!(o->op_private & OPpMAY_RETURN_CONSTANT)
-		  && SvTYPE(SvRV(gv)) != SVt_PVCV)
+		  && SvISNT_TYPE(SvRV(gv), PVCV))
 		    gv_fetchsv(kidsv, GV_ADDMULTI, SVt_PVCV);
 	    }
             OpTYPE_set(kid, OP_GV);
@@ -11724,7 +11724,7 @@ Perl_ck_fun(pTHX_ OP *o)
 
 		if (IS_CONST_OP(kid)
                     && (  !SvROK(cSVOPx_sv(kid)) 
-                        || SvTYPE(SvRV(cSVOPx_sv(kid))) != SVt_PVAV  )
+                        || SvISNT_TYPE(SvRV(cSVOPx_sv(kid)), PVAV)  )
                     )
 		    bad_type_pv(numargs, "array", o, kid);
 		else if (ISNT_TYPE(kid, RV2AV) && ISNT_TYPE(kid, PADAV)) {
@@ -13582,7 +13582,7 @@ Perl_rv2cv_op_cv(pTHX_ OP *cvop, U32 flags)
 	case OP_GV: {
 	    gv = cGVOPx_gv(rvop);
 	    if (!isGV(gv)) {
-		if (SvROK(gv) && SvTYPE(SvRV(gv)) == SVt_PVCV) {
+		if (SvROK(gv) && SvIS_TYPE(SvRV(gv), PVCV)) {
 		    cv = MUTABLE_CV(SvRV(gv));
 		    gv = NULL;
 		    break;
@@ -13613,7 +13613,7 @@ Perl_rv2cv_op_cv(pTHX_ OP *cvop, U32 flags)
 	    return NULL;
 	} NOT_REACHED; /* NOTREACHED */
     }
-    if (SvTYPE((SV*)cv) != SVt_PVCV)
+    if (SvISNT_TYPE(cv, PVCV))
 	return NULL;
     if (flags & (RV2CVOPCV_RETURN_NAME_GV|RV2CVOPCV_MAYBE_NAME_GV)) {
 	if ((!CvANON(cv) || !gv) && !CvLEXICAL(cv)
@@ -14350,7 +14350,7 @@ Perl_ck_entersub_args_signature(pTHX_ OP *entersubop, GV *namegv, CV *cv)
 #define PAD_NAME(pad_ix) padnamelist_fetch(namepad, pad_ix)
     PERL_ARGS_ASSERT_CK_ENTERSUB_ARGS_SIGNATURE;
 
-    assert(SvTYPE(cv) == SVt_PVCV);
+    assert(SvIS_TYPE(cv, PVCV));
     assert(CvHASSIG(cv));
     assert(o);
 
@@ -14727,11 +14727,11 @@ Perl_ck_entersub_args_proto(pTHX_ OP *entersubop, GV *namegv, SV *protosv)
     I32 contextclass = 0;
     const char *e = NULL;
     PERL_ARGS_ASSERT_CK_ENTERSUB_ARGS_PROTO;
-    if (SvTYPE(protosv) == SVt_PVCV ? (!SvPOK(protosv) && !CvHASSIG((CV*)protosv))
+    if (SvIS_TYPE(protosv, PVCV) ? (!SvPOK(protosv) && !CvHASSIG((CV*)protosv))
                                     : !SvOK(protosv))
 	Perl_croak(aTHX_ "panic: ck_entersub_args_proto CV with no proto, "
 		   "flags=%lx", (unsigned long) SvFLAGS(protosv));
-    if (SvTYPE(protosv) == SVt_PVCV)
+    if (SvIS_TYPE(protosv, PVCV))
         proto = CvPROTO(protosv), proto_len = CvPROTOLEN(protosv);
     else
         proto = SvPV(protosv, proto_len);
@@ -14968,15 +14968,15 @@ Perl_ck_entersub_args_proto_or_list(pTHX_ OP *entersubop,
     PERL_ARGS_ASSERT_CK_ENTERSUB_ARGS_PROTO_OR_LIST;
     /* Which types do arrive here? 99% CV */
     DEBUG_kv(Perl_deb(aTHX_ "ck_entersub %s %" SVf "\n",
-                     SvTYPE(protosv) == SVt_PVCV
-                       ? "CV" : SvTYPE(protosv) == SVt_PVGV
+                     SvIS_TYPE(protosv, PVCV)
+                       ? "CV" : SvIS_TYPE(protosv, PVGV)
                        ? "GV" : "RV",
                      SVfARG(cv_name((CV*)protosv, NULL, CV_NAME_NOMAIN))));
-    if (LIKELY(SvTYPE(protosv) == SVt_PVCV)) {
+    if (LIKELY(SvIS_TYPE(protosv, PVCV))) {
         CV* cv = (CV*)protosv;
-        if (UNLIKELY(HvCLASS(SvTYPE(namegv) == SVt_PVGV   ? GvSTASH(namegv)
-                           : SvTYPE(namegv) == SVt_PVCV && CvSTASH(namegv)
-                                                          ? CvSTASH(namegv)
+        if (UNLIKELY(HvCLASS(SvIS_TYPE(namegv, PVGV)  ? GvSTASH(namegv)
+                           : SvIS_TYPE(namegv, PVCV) && CvSTASH(namegv)
+                                                      ? CvSTASH(namegv)
                            : PL_defstash
                      ) && CvMETHOD(cv)))
             Perl_croak(aTHX_ "Invalid subroutine call on class method %" SVf,
@@ -15013,7 +15013,7 @@ Perl_ck_entersub_args_proto_or_list(pTHX_ OP *entersubop,
 OP *
 Perl_ck_entersub_args_core(pTHX_ OP *entersubop, GV *namegv, SV *protosv)
 {
-    int opnum = SvTYPE(protosv) == SVt_PVCV ? 0 : (int)SvUV(protosv);
+    int opnum = SvIS_TYPE(protosv, PVCV) ? 0 : (int)SvUV(protosv);
     OP *aop = OpFIRST(entersubop);
 
     PERL_ARGS_ASSERT_CK_ENTERSUB_ARGS_CORE;
@@ -15507,8 +15507,8 @@ Perl_ck_each(pTHX_ OP *o)
 	    case OP_CONST:
 		if (kid->op_private == OPpCONST_BARE
 		 || !SvROK(cSVOPx_sv(kid))
-		 || (  SvTYPE(SvRV(cSVOPx_sv(kid))) != SVt_PVAV
-		    && SvTYPE(SvRV(cSVOPx_sv(kid))) != SVt_PVHV  )
+                    || (  SvISNT_TYPE(SvRV(cSVOPx_sv(kid)), PVAV)
+                       && SvISNT_TYPE(SvRV(cSVOPx_sv(kid)), PVHV) )
 		   )
 		    goto bad;
                 /* FALLTHROUGH */
@@ -19478,22 +19478,22 @@ S_Mu_av_xsub(pTHX_ CV* cv)
         XSRETURN(1);
     }
     else if (gimme != G_ARRAY) {
-        if (SvTYPE(av) == SVt_PVAV) /* scalar @a */
+        if (SvIS_TYPE(av, PVAV)) /* scalar @a */
             ST(0) = sv_2mortal(newSViv((IV)AvFILLp(av)+1));
-        else if (SvTYPE(av) == SVt_PVHV) /* scalar %a*/
+        else if (SvIS_TYPE(av, PVHV)) /* scalar %a*/
             ST(0) = sv_2mortal(newSViv((IV)HvKEYS((HV*)av)));
         else
             Perl_croak(aTHX_ "Invalid object field type %x", SvTYPE(av));
 	XSRETURN(1);
     }
-    if (SvTYPE(av) == SVt_PVAV) {
+    if (SvIS_TYPE(av, PVAV)) {
         const SSize_t fill = AvFILL(av); /* last elem */
         if (fill >= 0) {
             EXTEND(SP, fill);
             Copy(AvARRAY(av), &ST(0), fill+1, SV *);
         }
         XSRETURN(fill+1);
-    } else if (SvTYPE(av) == SVt_PVHV) { /* %a as list */
+    } else if (SvIS_TYPE(av, PVHV)) { /* %a as list */
         HV* const hv = (HV* const)av;
         HE *he;
         const U32 keys = HvKEYS(hv);
@@ -19772,7 +19772,7 @@ S_add_isa_fields(pTHX_ HV* klass, AV* isa)
         if (!svp) continue;
         if (SvPOK(*svp))
             tmpnam = newSVpvn_flags(SvPVX(*svp), SvCUR(*svp), SvUTF8(*svp));
-        else if (SvTYPE(*svp) == SVt_PVHV)
+        else if (SvIS_TYPE(*svp, PVHV))
             tmpnam = newSVpvn_flags(HvNAME(*svp), HvNAMELEN(*svp), HvNAMEUTF8(*svp));
         else
             continue;
@@ -19851,7 +19851,7 @@ S_add_does_methods(pTHX_ HV* klass, AV* does)
         if (!classp) continue;
         if (SvPOK(*classp))
             curclass = gv_stashsv(*classp, 0);
-        else if (SvTYPE(*classp) == SVt_PVHV)
+        else if (SvIS_TYPE(*classp, PVHV))
             curclass = MUTABLE_HV(*classp);
         else
             continue;
@@ -20073,9 +20073,9 @@ Perl_class_role_finalize(pTHX_ OP* o)
 	for (entry = HvARRAY(stash)[i]; entry; entry = HeNEXT(entry)) {
 	    GV *gv = (GV*)HeVAL(entry);
             CV *cv;
-            if (SvROK(gv) && SvTYPE(SvRV(gv)) == SVt_PVCV)
+            if (SvROK(gv) && SvIS_TYPE(SvRV(gv), PVCV))
                 (void)CvGV(SvRV(gv)); /* unfake a fake GV */
-	    if (SvTYPE(gv) != SVt_PVGV || !GvGP(gv))
+	    if (SvISNT_TYPE(gv, PVGV) || !GvGP(gv))
 		continue;
 	    if ((cv = GvCVu(gv)) && !CvISXSUB(cv))
                 method_finalize(stash, cv);

@@ -144,7 +144,7 @@ S_sassign_cv_to_gv(pTHX_ SV* left, SV* right)
 	if (!got_coderef && !is_gv && GIMME_V == G_VOID) {
 	    /* Is the target symbol table currently empty?  */
 	    GV * const gv = gv_fetchsv_nomg(left, GV_NOINIT, SVt_PVGV);
-	    if (SvTYPE(gv) != SVt_PVGV && !SvOK(gv)) {
+	    if (SvISNT_TYPE(gv, PVGV) && !SvOK(gv)) {
 		/* Good. Create a new proxy constant subroutine in the target.
 		   The gv becomes a(nother) reference to the constant.  */
 		SV *const value = SvRV(cv);
@@ -905,7 +905,7 @@ PPt(pp_aelemfast, "():Scalar")
     SV** svp;
     SV *sv;
 
-    assert(SvTYPE(av) == SVt_PVAV);
+    assert(SvIS_TYPE(av, PVAV));
 
     EXTEND(SP, 1);
 
@@ -980,7 +980,7 @@ PPt(pp_aelem_u, "(:Array(:Scalar),:Int):Scalar")
     /*const U32 defer = PL_op->op_private & OPpLVAL_DEFER;
       const bool localizing = PL_op->op_private & OPpLVAL_INTRO;*/
 
-    if (UNLIKELY(SvTYPE(av) != SVt_PVAV)) /* likely is that AvARRAY is uninit, or lval */
+    if (UNLIKELY(SvISNT_TYPE(av, PVAV))) /* likely is that AvARRAY is uninit, or lval */
 	RETSETUNDEF;
     if (!AvARRAY(av)) {
         TOPs = lval ? newSV(0) : UNDEF;
@@ -1215,8 +1215,8 @@ S_do_oddball(pTHX_ SV **oddkey, SV **firstkey)
 	    const char *err;
 	    if (oddkey == firstkey &&
 		SvROK(*oddkey) &&
-		(SvTYPE(SvRV(*oddkey)) == SVt_PVAV ||
-		 SvTYPE(SvRV(*oddkey)) == SVt_PVHV))
+		(SvIS_TYPE(SvRV(*oddkey), PVAV) ||
+		 SvIS_TYPE(SvRV(*oddkey), PVHV)))
 	    {
 		err = "Reference found where even-sized list expected";
 	    }
@@ -1301,7 +1301,7 @@ S_aassign_copy_common(pTHX_ SV **firstlelem, SV **lastlelem,
             if (SvSMAGICAL(svl)) {
                 copy_all = TRUE;
             }
-            if (SvTYPE(svl) == SVt_PVAV || SvTYPE(svl) == SVt_PVHV) {
+            if (SvIS_TYPE(svl, PVAV) || SvIS_TYPE(svl, PVHV)) {
                 if (!marked)
                     return;
                 /* this LH element will consume all further args;
@@ -1431,7 +1431,7 @@ PP(pp_aassign)
                     SV *sv = *lelem;
                     if (!sv || SvREFCNT(sv) == 1)
                         continue;
-                    if (SvTYPE(sv) != SVt_PVAV && SvTYPE(sv) != SVt_PVHV)
+                    if (SvISNT_TYPE(sv, PVAV) && SvISNT_TYPE(sv, PVHV))
                         goto do_scan;
                     break;
                 }
@@ -1477,7 +1477,7 @@ PP(pp_aassign)
 	if (UNLIKELY(!lsv)) {
 	    alias = TRUE;
 	    lsv = *lelem++;
-	    ASSUME(SvTYPE(lsv) == SVt_PVAV);
+	    ASSUME(SvIS_TYPE(lsv, PVAV));
 	}
         if (UNLIKELY(OpSPECIAL(PL_op) && SvREADONLY(lsv))) {
             SvREADONLY_off(lsv);
@@ -1926,7 +1926,7 @@ PP(pp_aassign)
 
 	if (UNLIKELY(!lsv)) {
 	    lsv = *lelem++;
-	    ASSUME(SvTYPE(lsv) == SVt_PVAV);
+	    ASSUME(SvIS_TYPE(lsv, PVAV));
 	}
 
 	switch (SvTYPE(lsv)) {
@@ -2524,7 +2524,7 @@ PP(pp_helem)
     const bool localizing = PL_op->op_private & OPpLVAL_INTRO;
     bool preeminent = TRUE;
 
-    if (SvTYPE(hv) != SVt_PVHV)
+    if (SvISNT_TYPE(hv, PVHV))
 	RETPUSHUNDEF;
 
     if (localizing) {
@@ -2689,10 +2689,10 @@ PP(pp_multideref)
                     sv = amagic_deref_call(sv, to_av_amg);
                 }
                 sv = SvRV(sv);
-                if (UNLIKELY(SvTYPE(sv) != SVt_PVAV))
+                if (UNLIKELY(SvISNT_TYPE(sv, PVAV)))
                     DIE(aTHX_ "Not an ARRAY reference");
             }
-            else if (SvTYPE(sv) != SVt_PVAV) {
+            else if (SvISNT_TYPE(sv, PVAV)) {
                 if (!isGV_with_GP(sv))
                     sv = (SV*)S_softref2xv_lite(aTHX_ sv, "an ARRAY", SVt_PVAV);
                 sv = MUTABLE_SV(GvAVn((GV*)sv));
@@ -2708,7 +2708,7 @@ PP(pp_multideref)
                 SV *elemsv;
                 IV elem = 0; /* to shut up stupid compiler warnings */
 
-                assert(SvTYPE(sv) == SVt_PVAV);
+                assert(SvIS_TYPE(sv, PVAV));
 
                 switch (actions & MDEREF_INDEX_MASK) {
                 case MDEREF_INDEX_none:
@@ -2890,10 +2890,10 @@ PP(pp_multideref)
                     sv = amagic_deref_call(sv, to_hv_amg);
                 }
                 sv = SvRV(sv);
-                if (UNLIKELY(SvTYPE(sv) != SVt_PVHV))
+                if (UNLIKELY(SvISNT_TYPE(sv, PVHV)))
                     DIE(aTHX_ "Not a HASH reference");
             }
-            else if (SvTYPE(sv) != SVt_PVHV) {
+            else if (SvISNT_TYPE(sv, PVHV)) {
                 if (!isGV_with_GP(sv))
                     sv = (SV*)S_softref2xv_lite(aTHX_ sv, "a HASH", SVt_PVHV);
                 sv = MUTABLE_SV(GvHVn((GV*)sv));
@@ -2908,7 +2908,7 @@ PP(pp_multideref)
                  */
                 SV *keysv = NULL; /* to shut up stupid compiler warnings */
 
-                assert(SvTYPE(sv) == SVt_PVHV);
+                assert(SvIS_TYPE(sv, PVHV));
 
                 switch (actions & MDEREF_INDEX_MASK) {
                 case MDEREF_INDEX_none:
@@ -3480,9 +3480,9 @@ PP(pp_subst)
 	    sv_force_normal_flags(TARG,0);
 #endif
 	if ((SvREADONLY(TARG)
-		|| ( ((SvTYPE(TARG) == SVt_PVGV && isGV_with_GP(TARG))
-		      || SvTYPE(TARG) > SVt_PVLV)
-		     && !(SvTYPE(TARG) == SVt_PVGV && SvFAKE(TARG)))))
+             || ( ((SvIS_TYPE(TARG, PVGV) && isGV_with_GP(TARG))
+                   || SvTYPE(TARG) > SVt_PVLV)
+              && !(SvIS_TYPE(TARG, PVGV) && SvFAKE(TARG)))))
 	    croak_no_modify_sv(TARG);
     }
     PUTBACK;
@@ -3491,7 +3491,7 @@ PP(pp_subst)
     /* note we don't (yet) force the var into being a string; if we fail
      * to match, we leave as-is; on successful match however, we *will*
      * coerce into a string, then repeat the match */
-    if (!SvPOKp(TARG) || SvTYPE(TARG) == SVt_PVGV || SvVOK(TARG))
+    if (!SvPOKp(TARG) || SvIS_TYPE(TARG, PVGV) || SvVOK(TARG))
 	force_on_match = 1;
 
     /* only replace once? */
@@ -4292,7 +4292,7 @@ PP(pp_entersub)
         cv = MUTABLE_CV(sv);
 
     /* a CV ? */
-    if (UNLIKELY(SvTYPE(cv) != SVt_PVCV)) {
+    if (UNLIKELY(SvISNT_TYPE(cv, PVCV))) {
         /* handle all the weird cases */
         switch (SvTYPE(sv)) {
         case SVt_PVLV:
@@ -4348,7 +4348,7 @@ PP(pp_entersub)
                 break;
             }
             cv = MUTABLE_CV(SvRV(sv));
-            if (LIKELY(SvTYPE(cv) == SVt_PVCV))
+            if (LIKELY(SvIS_TYPE(cv, PVCV)))
                 break;
             /* FALLTHROUGH */
         case SVt_PVHV:
@@ -4572,7 +4572,7 @@ PP(pp_enterxssub)
     if (UNLIKELY(!sv))
 	DIE(aTHX_ "Not a CODE reference");
     /* only when a XS was being replaced by a PP sub */
-    if (!(UNLIKELY(SvTYPE(sv) == SVt_PVGV) && (cv = GvCVu((const GV *)sv)))) {
+    if (!(UNLIKELY(SvIS_TYPE(sv, PVGV)) && (cv = GvCVu((const GV *)sv)))) {
         switch (SvTYPE(sv)) {
         case SVt_PVCV:
             cv = MUTABLE_CV(sv);
@@ -4618,7 +4618,7 @@ PP(pp_enterxssub)
                 break;
             }
             cv = MUTABLE_CV(SvRV(sv));
-            if (LIKELY(SvTYPE(cv) == SVt_PVCV))
+            if (LIKELY(SvIS_TYPE(cv, PVCV)))
                 break;
             /* FALLTHROUGH */
         case SVt_PVHV:
@@ -5022,7 +5022,7 @@ PP(pp_signature)
                  * NB it's likely that on subsequent calls the cleared
                  * lexical will have formerly been SVt_IV; if this
                  * is the case, we can do a short-cut */
-                if (LIKELY(SvTYPE(varsv) == SVt_IV)) {
+                if (LIKELY(SvIS_TYPE(varsv, IV))) {
                     assert(!SvOK(varsv));
                     assert(!SvMAGICAL(varsv));
                     (void)SvIOK_only(varsv);
@@ -5063,7 +5063,7 @@ PP(pp_signature)
                         i = SvIVX(argsv);
                         goto setiv;
                     }
-                    else if (SvROK(argsv) && SvTYPE(varsv) == SVt_IV) {
+                    else if (SvROK(argsv) && SvIS_TYPE(varsv, IV)) {
                         /* quick ref assignment */
                         assert(!SvOK(varsv));
                         SvRV_set(varsv, SvREFCNT_inc(SvRV(argsv)));
@@ -5255,7 +5255,7 @@ PP(pp_aelem)
 	Perl_warner(aTHX_ packWARN(WARN_MISC),
 		    "Use of reference \"%" SVf "\" as array index",
 		    SVfARG(elemsv));
-    if (UNLIKELY(SvTYPE(av) != SVt_PVAV))
+    if (UNLIKELY(SvISNT_TYPE(av, PVAV)))
 	RETPUSHUNDEF;
 
     if (UNLIKELY(localizing)) {
@@ -5384,7 +5384,7 @@ S_opmethod_stash(pTHX_ SV* meth)
 			     "without a package or object reference",
 			      SVfARG(meth));
 	ob = sv;
-	if (SvTYPE(ob) == SVt_PVLV && LvTYPE(ob) == 'y') {
+	if (SvIS_TYPE(ob, PVLV) && LvTYPE(ob) == 'y') {
 	    assert(!LvTARGLEN(ob));
 	    ob = LvTARG(ob);
 	    assert(ob);
@@ -5446,7 +5446,7 @@ PP(pp_method)
 
     if (SvROK(meth)) {
         SV* const rmeth = SvRV(meth);
-        if (SvTYPE(rmeth) == SVt_PVCV) {
+        if (SvIS_TYPE(rmeth, PVCV)) {
             SETs(rmeth);
             RETURN;
         }
@@ -5495,7 +5495,7 @@ PP(pp_method_named)
     SV* const meth = cMETHOPx_meth(PL_op);
     HV* const stash = opmethod_stash(meth);
 
-    if (LIKELY(SvTYPE(stash) == SVt_PVHV)) {
+    if (LIKELY(SvIS_TYPE(stash, PVHV))) {
         METHOD_CHECK_CACHE(stash, stash, meth);
     }
 

@@ -67,7 +67,7 @@ PP(pp_padav)
 {
     dSP; dTARGET;
     U8 gimme;
-    assert(SvTYPE(TARG) == SVt_PVAV);
+    assert(SvIS_TYPE(TARG, PVAV));
     if (UNLIKELY( PL_op->op_private & OPpLVAL_INTRO ))
 	if (LIKELY( !(PL_op->op_private & OPpPAD_STATE) ))
 	    SAVECLEARSV(PAD_SVl(PL_op->op_targ));
@@ -129,7 +129,7 @@ PP(pp_padhv)
     dSP; dTARGET;
     U8 gimme;
 
-    assert(SvTYPE(TARG) == SVt_PVHV);
+    assert(SvIS_TYPE(TARG, PVHV));
     XPUSHs(TARG);
     if (UNLIKELY( PL_op->op_private & OPpLVAL_INTRO ))
 	if (LIKELY( !(PL_op->op_private & OPpPAD_STATE) ))
@@ -167,7 +167,7 @@ PP(pp_padhv)
 PP(pp_padcv)
 {
     dSP; dTARGET;
-    assert(SvTYPE(TARG) == SVt_PVCV);
+    assert(SvIS_TYPE(TARG, PVCV));
     XPUSHs(TARG);
     RETURN;
 }
@@ -184,7 +184,7 @@ PP(pp_clonecv)
     dTARGET;
     CV * const protocv = PadnamePROTOCV
         (PadlistNAMESARRAY(CvPADLIST(find_runcv(NULL)))[ARGTARG]);
-    assert(SvTYPE(TARG) == SVt_PVCV);
+    assert(SvIS_TYPE(TARG, PVCV));
     assert(protocv);
     if (CvISXSUB(protocv)) { /* constant */
 	/* XXX Should we clone it here? */
@@ -225,7 +225,7 @@ S_rv2gv(pTHX_ SV *sv, const bool vivify_sv, const bool strict,
 	}
     wasref:
 	sv = SvRV(sv);
-	if (SvTYPE(sv) == SVt_PVIO) {
+	if (SvIS_TYPE(sv, PVIO)) {
 	    GV * const gv = MUTABLE_GV(sv_newmortal());
 	    gv_init(gv, 0, "__ANONIO__", 10, 0);
 	    GvIOp(gv) = MUTABLE_IO(sv);
@@ -249,7 +249,7 @@ S_rv2gv(pTHX_ SV *sv, const bool vivify_sv, const bool strict,
 		    if (cUNOP->op_targ) {
 			SV * const namesv = PAD_SV(cUNOP->op_targ);
 			HV *stash = CopSTASH(PL_curcop);
-			if (SvTYPE(stash) != SVt_PVHV) stash = NULL;
+			if (SvISNT_TYPE(stash, PVHV)) stash = NULL;
 			gv = MUTABLE_GV(newSV(0));
 			gv_init_sv(gv, stash, namesv, 0);
 		    }
@@ -592,7 +592,7 @@ PP(pp_rv2cv)
     CV *cv = sv_2cv(TOPs, &stash_unused, &gv, flags);
     if (cv) NOOP;
     else if ((flags == (GV_ADD|GV_NOEXPAND)) && gv && SvROK(gv)) {
-	cv = SvTYPE(SvRV(gv)) == SVt_PVCV
+	cv = SvIS_TYPE(SvRV(gv), PVCV)
 	    ? MUTABLE_CV(SvRV(gv))
 	    : MUTABLE_CV(gv);
     }    
@@ -685,7 +685,7 @@ S_refto(pTHX_ SV *sv)
 
     PERL_ARGS_ASSERT_REFTO;
 
-    if (SvTYPE(sv) == SVt_PVLV && LvTYPE(sv) == 'y') {
+    if (SvIS_TYPE(sv, PVLV) && LvTYPE(sv) == 'y') {
 	if (LvTARGLEN(sv))
 	    vivify_defelem(sv);
 	if (!(sv = LvTARG(sv)))
@@ -693,7 +693,7 @@ S_refto(pTHX_ SV *sv)
 	else
 	    SvREFCNT_inc_void_NN(sv);
     }
-    else if (SvTYPE(sv) == SVt_PVAV) {
+    else if (SvIS_TYPE(sv, PVAV)) {
 	if (!AvREAL((const AV *)sv) && AvREIFY((const AV *)sv))
 	    av_reify(MUTABLE_AV(sv));
 	SvTEMP_off(sv);
@@ -772,7 +772,7 @@ PP(pp_bless)
     {
       curstash:
         stash = CopSTASH(PL_curcop);
-        if (SvTYPE(stash) != SVt_PVHV)
+        if (SvISNT_TYPE(stash, PVHV))
             Perl_croak(aTHX_ "Attempt to bless into a freed package");
     }
     else {
@@ -882,11 +882,11 @@ PP(pp_study)
 {
     dSP; dTOPss;
 
-    if (SvTYPE(sv) == SVt_PVHV)
+    if (SvIS_TYPE(sv, PVHV))
         hv_study((HV*)sv);
-    else if (SvTYPE(sv) == SVt_PVAV)
+    else if (SvIS_TYPE(sv, PVAV))
         av_study((AV*)sv);
-    else if (SvTYPE(sv) == SVt_PVCV)
+    else if (SvIS_TYPE(sv, PVCV))
         cv_study((CV*)sv);
     else if (SvTYPE(sv) == SVt_REGEXP)
         re_study((REGEXP*)sv);
@@ -949,7 +949,7 @@ S_do_chomp(pTHX_ SV *retval, SV *sv, bool chomping)
 
     if (chomping && (RsSNARF(PL_rs) || RsRECORD(PL_rs)))
 	return 0;
-    if (SvTYPE(sv) == SVt_PVAV) {
+    if (SvIS_TYPE(sv, PVAV)) {
 	AV *const av = MUTABLE_AV(sv);
 	SSize_t i;
 	const SSize_t max = AvFILL(av);
@@ -961,7 +961,7 @@ S_do_chomp(pTHX_ SV *retval, SV *sv, bool chomping)
 	}
         return count;
     }
-    else if (SvTYPE(sv) == SVt_PVHV) {
+    else if (SvIS_TYPE(sv, PVHV)) {
 	HV* const hv = MUTABLE_HV(sv);
 	HE* entry;
         (void)hv_iterinit(hv);
@@ -5202,7 +5202,7 @@ PP(pp_aslice)
     AV *const av = MUTABLE_AV(POPs);
     const I32 lval = (PL_op->op_flags & OPf_MOD || LVRET);
 
-    if (SvTYPE(av) == SVt_PVAV) {
+    if (SvIS_TYPE(av, PVAV)) {
 	const bool localizing = PL_op->op_private & OPpLVAL_INTRO;
 	bool can_preserve = FALSE;
 
@@ -5562,9 +5562,9 @@ PP(pp_delete)
 	SV *keysv = POPs;
 	HV * const hv = MUTABLE_HV(POPs);
 	SV *sv = NULL;
-	if (SvTYPE(hv) == SVt_PVHV)
+	if (SvIS_TYPE(hv, PVHV))
 	    sv = hv_delete_ent(hv, keysv, discard, 0);
-	else if (SvTYPE(hv) == SVt_PVAV) {
+	else if (SvIS_TYPE(hv, PVAV)) {
 	    if (OpSPECIAL(PL_op))
 		sv = av_delete(MUTABLE_AV(hv), SvIV(keysv), discard);
 	    else
@@ -5598,11 +5598,11 @@ PP(pp_exists)
     }
     tmpsv = POPs;
     hv = MUTABLE_HV(POPs);
-    if (LIKELY( SvTYPE(hv) == SVt_PVHV )) {
+    if (LIKELY( SvIS_TYPE(hv, PVHV) )) {
 	if (hv_exists_ent(hv, tmpsv, 0))
 	    RETPUSHYES;
     }
-    else if (SvTYPE(hv) == SVt_PVAV) {
+    else if (SvIS_TYPE(hv, PVAV)) {
 	if (OpSPECIAL(PL_op)) {		/* array element */
 	    if (av_exists(MUTABLE_AV(hv), SvIV(tmpsv)))
 		RETPUSHYES;
@@ -6151,7 +6151,7 @@ PP(pp_reverse)
 	    AV *av;
 
 	    /* See pp_sort() */
-	    assert( MARK+1 == SP && *SP && SvTYPE(*SP) == SVt_PVAV);
+	    assert( MARK+1 == SP && *SP && SvIS_TYPE(*SP, PVAV));
 	    (void)POPMARK; /* remove mark associated with ex-OP_AASSIGN */
 	    av = MUTABLE_AV((*SP));
             if (AvSHAPED(av)) Perl_croak_shaped_array("reverse");
@@ -6747,9 +6747,10 @@ PP(pp_lock)
     dTOPss;
     SV *retsv = sv;
     SvLOCK(sv);
-    if (SvTYPE(retsv) == SVt_PVAV
-     || SvTYPE(retsv) == SVt_PVHV
-     || SvTYPE(retsv) == SVt_PVCV) {
+    if (   SvIS_TYPE(retsv, PVAV)
+        || SvIS_TYPE(retsv, PVHV)
+        || SvIS_TYPE(retsv, PVCV) )
+    {
 	retsv = refto(retsv);
     }
     SETs(retsv);
@@ -6874,7 +6875,7 @@ PP(pp_coreargs)
 		break;
 	    }
 	    if (!svp || !*svp || !SvROK(*svp)
-	     || SvTYPE(SvRV(*svp)) != SVt_PVAV)
+	     || SvISNT_TYPE(SvRV(*svp), PVAV))
 		DIE(aTHX_
 		/* diag_listed_as: Type of arg %d to &CORE::%s must be %s*/
 		 "Type of arg %d to &CORE::%s must be array reference",
@@ -6883,9 +6884,9 @@ PP(pp_coreargs)
 	    break;
 	case OA_HVREF:
 	    if (!svp || !*svp || !SvROK(*svp)
-	     || (  SvTYPE(SvRV(*svp)) != SVt_PVHV
+	     || (  SvISNT_TYPE(SvRV(*svp), PVHV)
 		&& (  opnum == OP_DBMCLOSE || opnum == OP_DBMOPEN
-		   || SvTYPE(SvRV(*svp)) != SVt_PVAV  )))
+		   || SvISNT_TYPE(SvRV(*svp), PVAV)  )))
 		DIE(aTHX_
 		/* diag_listed_as: Type of arg %d to &CORE::%s must be %s*/
 		 "Type of arg %d to &CORE::%s must be hash%s reference",
@@ -6952,7 +6953,7 @@ PP(pp_avhvswitch)
 {
     dVAR; dSP;
     return PL_ppaddr[
-		(SvTYPE(TOPs) == SVt_PVAV ? OP_AEACH : OP_EACH)
+		(SvIS_TYPE(TOPs, PVAV) ? OP_AEACH : OP_EACH)
 		    + (PL_op->op_private & OPpAVHVSWITCH_MASK)
 	   ](aTHX);
 }
@@ -7033,15 +7034,15 @@ PP(pp_refassign)
 	    bad = " SCALAR";
 	break;
     case OPpLVREF_AV:
-	if (SvTYPE(SvRV(sv)) != SVt_PVAV)
+	if (SvISNT_TYPE(SvRV(sv), PVAV))
 	    bad = "n ARRAY";
 	break;
     case OPpLVREF_HV:
-	if (SvTYPE(SvRV(sv)) != SVt_PVHV)
+	if (SvISNT_TYPE(SvRV(sv), PVHV))
 	    bad = " HASH";
 	break;
     case OPpLVREF_CV:
-	if (SvTYPE(SvRV(sv)) != SVt_PVCV)
+	if (SvISNT_TYPE(SvRV(sv), PVCV))
 	    bad = " CODE";
     }
     if (bad)
@@ -7110,7 +7111,7 @@ PP(pp_lvref)
         assert(arg);
         {
             const bool can_preserve = cBOOL(SvCANEXISTDELETE(arg));
-            if (SvTYPE(arg) == SVt_PVAV)
+            if (SvIS_TYPE(arg, PVAV))
               S_localise_aelem_lval(aTHX_ (AV *)arg, elem, can_preserve);
             else
               S_localise_helem_lval(aTHX_ (HV *)arg, elem, can_preserve);
@@ -7141,7 +7142,7 @@ PP(pp_lvrefslice)
 
 	can_preserve = SvCANEXISTDELETE(av);
 
-	if (SvTYPE(av) == SVt_PVAV) {
+	if (SvIS_TYPE(av, PVAV)) {
 	    SSize_t max = -1;
 
 	    for (svp = MARK + 1; svp <= SP; svp++) {
@@ -7156,7 +7157,7 @@ PP(pp_lvrefslice)
 
     while (++MARK <= SP) {
 	SV * const elemsv = *MARK;
-	if (SvTYPE(av) == SVt_PVAV)
+	if (SvIS_TYPE(av, PVAV))
 	    S_localise_aelem_lval(aTHX_ av, elemsv, can_preserve);
 	else
 	    S_localise_helem_lval(aTHX_ (HV *)av, elemsv, can_preserve);

@@ -1031,8 +1031,8 @@ Perl_leave_scope(pTHX_ I32 base)
             DEBUG_lv(Perl_deb(aTHX_ "restore GVSLOT %p %p %p\n",
                               a2.any_sv, *a1.any_svp, a0.any_gv));
 	    if (hv && HvENAME(hv) && (
-		    (a2.any_sv && SvTYPE(a2.any_sv) == SVt_PVCV)
-		 || (*a1.any_svp && SvTYPE(*a1.any_svp) == SVt_PVCV)
+		    (a2.any_sv && SvIS_TYPE(a2.any_sv, PVCV))
+		 || (*a1.any_svp && SvIS_TYPE(*a1.any_svp, PVCV))
 	       ))
 	    {
 		if ((char *)a1.any_svp < (char *)GvGP(a0.any_gv)
@@ -1272,7 +1272,7 @@ Perl_leave_scope(pTHX_ I32 base)
                             SvREADONLY_off(sv);
 
                         if (SvOOK(sv)) { /* OOK or HvAUX */
-                            if (SvTYPE(sv) == SVt_PVHV)
+                            if (SvIS_TYPE(sv, PVHV))
                                 Perl_hv_kill_backrefs(aTHX_ MUTABLE_HV(sv));
                             else
                                 sv_backoff(sv);
@@ -1282,7 +1282,7 @@ Perl_leave_scope(pTHX_ I32 base)
                             /* note that backrefs (either in HvAUX or magic)
                              * must be removed before other magic */
                             sv_unmagic(sv, PERL_MAGIC_backref);
-                            if (SvTYPE(sv) != SVt_PVCV)
+                            if (SvISNT_TYPE(sv, PVCV))
                                 mg_free(sv);
                         }
                         if (SvTHINKFIRST(sv))

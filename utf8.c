@@ -3866,7 +3866,7 @@ Perl__core_swash_init(pTHX_ const char* pkg, const char* name, SV *listsv, I32 m
 	if (IN_PERL_COMPILETIME) {
 	    CopHINTS_set(PL_curcop, PL_hints);
 	}
-	if (!SvROK(retval) || SvTYPE(SvRV(retval)) != SVt_PVHV) {
+	if (!SvROK(retval) || SvISNT_TYPE(SvRV(retval), PVHV)) {
 	    if (SvPOK(retval)) {
 #ifndef __cplusplus
             no_swash_init:
@@ -4054,7 +4054,7 @@ Perl_swash_fetch(pTHX_ SV *swash, const U8 *ptr, bool do_utf8)
 
     /* If it really isn't a hash, it isn't really swash; must be an inversion
      * list */
-    if (SvTYPE(hv) != SVt_PVHV) {
+    if (SvISNT_TYPE(hv, PVHV)) {
         return _invlist_contains_cp((SV*)hv,
                                     (do_utf8)
                                      ? valid_utf8_to_uvchr(ptr, NULL)
@@ -4961,7 +4961,7 @@ Perl__swash_to_invlist(pTHX_ SV* const swash)
     PERL_ARGS_ASSERT__SWASH_TO_INVLIST;
 
     /* If not a hash, it must be the swash's inversion list instead */
-    if (SvTYPE(hv) != SVt_PVHV) {
+    if (SvISNT_TYPE(hv, PVHV)) {
         return SvREFCNT_inc_simple_NN((SV*) hv);
     }
 
@@ -5161,7 +5161,7 @@ Perl__get_swash_invlist(pTHX_ SV* const swash)
 
     /* If it really isn't a hash, it isn't really swash; must be an inversion
      * list */
-    if (SvTYPE(SvRV(swash)) != SVt_PVHV) {
+    if (SvISNT_TYPE(SvRV(swash), PVHV)) {
         return SvRV(swash);
     }
 

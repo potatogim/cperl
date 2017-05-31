@@ -2508,7 +2508,7 @@ S_sublex_start(pTHX)
 	PL_lex_stuff = NULL;
 	sv = tokeq(sv);
 
-	if (SvTYPE(sv) == SVt_PVIV) {
+	if (SvIS_TYPE(sv, PVIV)) {
 	    /* Overloaded constants, nothing fancy: Convert to SVt_PV: */
 	    STRLEN len;
 	    const char * const p = SvPV_const(sv, len);
@@ -2749,7 +2749,7 @@ S_get_and_check_backslash_N_name(pTHX_ const char* s, const char* const e)
     table = GvHV(PL_hintgv);		 /* ^H */
     cvp = hv_fetchs(table, "charnames", FALSE);
     if (cvp && (cv = *cvp) && SvROK(cv) && (rv = SvRV(cv),
-        SvTYPE(rv) == SVt_PVCV) && ((stash = CvSTASH(rv)) != NULL))
+        SvIS_TYPE(rv, PVCV)) && ((stash = CvSTASH(rv)) != NULL))
     {
         const char * const name = HvNAME(stash);
         if (HvNAMELEN(stash) == sizeof("_charnames")-1
@@ -4462,7 +4462,7 @@ S_intuit_method(pTHX_ char *start, SV *ioname, CV *cv)
 
     PERL_ARGS_ASSERT_INTUIT_METHOD;
 
-    if (gv && SvTYPE(gv) == SVt_PVGV && GvIO(gv))
+    if (gv && SvIS_TYPE(gv, PVGV) && GvIO(gv))
 	    return 0;
     if (cv && SvPOK(cv)) {
 	const char *proto = CvPROTO(cv);
@@ -4696,7 +4696,7 @@ Perl_filter_read(pTHX_ int idx, SV *buf_sv, int maxlen)
 			      idx));
 	return FILTER_READ(idx+1, buf_sv, correct_length); /* recurse */
     }
-    if (SvTYPE(datasv) != SVt_PVIO) {
+    if (SvISNT_TYPE(datasv, PVIO)) {
 	if (correct_length) {
  	    /* Want a block */
 	    const STRLEN remainder = SvLEN(datasv) - SvCUR(datasv);
@@ -7691,7 +7691,7 @@ Perl_yylex(pTHX)
 		    cv = lex
 			? isGV(gv)
 			    ? GvCV(gv)
-			    : SvROK(gv) && SvTYPE(SvRV(gv)) == SVt_PVCV
+			    : SvROK(gv) && SvIS_TYPE(SvRV(gv), PVCV)
 				? (CV *)SvRV(gv)
 				: ((CV *)gv)
 			: rv2cv_op_cv(rv2cv_op, RV2CVOPCV_RETURN_STUB);
@@ -7845,7 +7845,7 @@ Perl_yylex(pTHX)
 			op_free(rv2cv_op);
 			SvREFCNT_dec(((SVOP*)pl_yylval.opval)->op_sv);
 			((SVOP*)pl_yylval.opval)->op_sv = SvREFCNT_inc_simple(sv);
-			if (SvTYPE(sv) == SVt_PVAV)
+			if (SvIS_TYPE(sv, PVAV))
 			    pl_yylval.opval = newUNOP(OP_RV2AV, OPf_PARENS,
 						      pl_yylval.opval);
 			else {

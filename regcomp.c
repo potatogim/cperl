@@ -6280,7 +6280,7 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
         else if (delim)
             use_delim = TRUE;
 
-        if (SvTYPE(msv) == SVt_PVAV) {
+        if (SvIS_TYPE(msv, PVAV)) {
             /* we've encountered an interpolated array within
              * the pattern, e.g. /...@a..../. Expand the list of elements,
              * then recursively append elements.
@@ -6354,7 +6354,7 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
             if (sv) {
                 if (SvROK(sv))
                     sv = SvRV(sv);
-                if (SvTYPE(sv) != SVt_REGEXP)
+                if (SvISNT_TYPE(sv, REGEXP))
                     Perl_croak(aTHX_ "Overloaded qr did not return a REGEXP");
                 msv = sv;
             }
@@ -6383,7 +6383,7 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
                 msv = sv;
                 SvGETMAGIC(msv);
             }
-            if (SvROK(msv) && SvTYPE(SvRV(msv)) == SVt_REGEXP)
+            if (SvROK(msv) && SvIS_TYPE(SvRV(msv), REGEXP))
                 msv = SvRV(msv);
 
             if (pat) {
@@ -6407,7 +6407,8 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
                  * it is properly null terminated or we will fail asserts
                  * later. In theory we probably shouldn't get such SV's,
                  * but if we do we should handle it gracefully. */
-                if ( SvTYPE(msv) != SVt_PV || (SvLEN(msv) > SvCUR(msv) && *(SvEND(msv)) == 0) ) {
+                if ( SvISNT_TYPE(msv, PV) ||
+                     (SvLEN(msv) > SvCUR(msv) && *(SvEND(msv)) == 0) ) {
                     /* not a string, or a string with a trailing null */
                     pat = msv;
                 } else {
@@ -6422,7 +6423,7 @@ S_concat_pat(pTHX_ RExC_state_t * const pRExC_state,
         }
 
         /* extract any code blocks within any embedded qr//'s */
-        if (rx && SvTYPE(rx) == SVt_REGEXP
+        if (rx && SvIS_TYPE(rx, REGEXP)
             && RX_ENGINE((REGEXP*)rx)->op_comp)
         {
 
@@ -6620,7 +6621,7 @@ S_compile_runtime_code(pTHX_ RExC_state_t * const pRExC_state,
 	}
 	assert(SvROK(qr_ref));
 	qr = SvRV(qr_ref);
-	assert(SvTYPE(qr) == SVt_REGEXP && RX_ENGINE((REGEXP*)qr)->op_comp);
+	assert(SvIS_TYPE(qr, REGEXP) && RX_ENGINE((REGEXP*)qr)->op_comp);
 	/* the leaving below frees the tmp qr_ref.
 	 * Give qr a life of its own */
 	SvREFCNT_inc(qr);
@@ -6954,7 +6955,7 @@ Perl_re_op_compile(pTHX_ SV ** const patternp, int pat_count,
         SV *re = pat;
         if (SvROK(re))
             re = SvRV(re);
-        if (SvTYPE(re) == SVt_REGEXP) {
+        if (SvIS_TYPE(re, REGEXP)) {
             if (is_bare_re)
                 *is_bare_re = TRUE;
             SvREFCNT_inc(re);
@@ -8493,7 +8494,7 @@ S_invlist_set_len(pTHX_ SV* const invlist, const UV len, const bool offset)
     PERL_UNUSED_CONTEXT;
     PERL_ARGS_ASSERT_INVLIST_SET_LEN;
 
-    assert(SvTYPE(invlist) == SVt_INVLIST);
+    assert(SvIS_TYPE(invlist, INVLIST));
 
     SvCUR_set(invlist,
               (len == 0)
@@ -8521,8 +8522,8 @@ S_invlist_replace_list_destroys_src(pTHX_ SV * dest, SV * src)
 
     PERL_ARGS_ASSERT_INVLIST_REPLACE_LIST_DESTROYS_SRC;
 
-    assert(SvTYPE(src) == SVt_INVLIST);
-    assert(SvTYPE(dest) == SVt_INVLIST);
+    assert(SvIS_TYPE(src, INVLIST));
+    assert(SvIS_TYPE(dest, INVLIST));
     assert(! invlist_is_iterating(src));
     assert(SvCUR(src) == 0 || SvCUR(src) < SvLEN(src));
 
@@ -8557,7 +8558,7 @@ S_get_invlist_previous_index_addr(SV* invlist)
      * */
     PERL_ARGS_ASSERT_GET_INVLIST_PREVIOUS_INDEX_ADDR;
 
-    assert(SvTYPE(invlist) == SVt_INVLIST);
+    assert(SvIS_TYPE(invlist, INVLIST));
 
     return &(((XINVLIST*) SvANY(invlist))->prev_index);
 }
@@ -8595,7 +8596,7 @@ S_invlist_trim(SV* invlist)
 
     PERL_ARGS_ASSERT_INVLIST_TRIM;
 
-    assert(SvTYPE(invlist) == SVt_INVLIST);
+    assert(SvIS_TYPE(invlist, INVLIST));
 
     SvPV_renew(invlist, MAX(min_size, SvCUR(invlist) + 1));
 }
@@ -8605,7 +8606,7 @@ S_invlist_clear(pTHX_ SV* invlist)    /* Empty the inversion list */
 {
     PERL_ARGS_ASSERT_INVLIST_CLEAR;
 
-    assert(SvTYPE(invlist) == SVt_INVLIST);
+    assert(SvIS_TYPE(invlist, INVLIST));
 
     invlist_set_len(invlist, 0, 0);
     invlist_trim(invlist);
@@ -8631,7 +8632,7 @@ S_invlist_max(SV* const invlist)
 
     PERL_ARGS_ASSERT_INVLIST_MAX;
 
-    assert(SvTYPE(invlist) == SVt_INVLIST);
+    assert(SvIS_TYPE(invlist, INVLIST));
 
     /* Assumes worst case, in which the 0 element is not counted in the
      * inversion list, so subtracts 1 for that */
@@ -8732,7 +8733,7 @@ S_invlist_extend(pTHX_ SV* const invlist, const UV new_max)
 
     PERL_ARGS_ASSERT_INVLIST_EXTEND;
 
-    assert(SvTYPE(invlist) == SVt_INVLIST);
+    assert(SvIS_TYPE(invlist, INVLIST));
 
     /* Add one to account for the zero element at the beginning which may not
      * be counted by the calling parameters */
@@ -9062,7 +9063,7 @@ Perl__invlist_union_maybe_complement_2nd(pTHX_ SV* const a, SV* const b,
 
     PERL_ARGS_ASSERT__INVLIST_UNION_MAYBE_COMPLEMENT_2ND;
     assert(a != b);
-    assert(*output == NULL || SvTYPE(*output) == SVt_INVLIST);
+    assert(*output == NULL || SvIS_TYPE(*output, INVLIST));
 
     len_b = _invlist_len(b);
     if (len_b == 0) {
@@ -9340,7 +9341,7 @@ Perl__invlist_intersection_maybe_complement_2nd(pTHX_ SV* const a, SV* const b,
 
     PERL_ARGS_ASSERT__INVLIST_INTERSECTION_MAYBE_COMPLEMENT_2ND;
     assert(a != b);
-    assert(*i == NULL || SvTYPE(*i) == SVt_INVLIST);
+    assert(*i == NULL || SvIS_TYPE(*i, INVLIST));
 
     /* Special case if either one is empty */
     len_a = (a == NULL) ? 0 : _invlist_len(a);
@@ -9881,11 +9882,8 @@ S_get_invlist_iter_addr(SV* invlist)
 {
     /* Return the address of the UV that contains the current iteration
      * position */
-
     PERL_ARGS_ASSERT_GET_INVLIST_ITER_ADDR;
-
-    assert(SvTYPE(invlist) == SVt_INVLIST);
-
+    assert(SvIS_TYPE(invlist, INVLIST));
     return &(((XINVLIST*) SvANY(invlist))->iterator);
 }
 
@@ -9893,7 +9891,6 @@ PERL_STATIC_INLINE void
 S_invlist_iterinit(SV* invlist)	/* Initialize iterator for invlist */
 {
     PERL_ARGS_ASSERT_INVLIST_ITERINIT;
-
     *get_invlist_iter_addr(invlist) = 0;
 }
 
@@ -9907,9 +9904,7 @@ S_invlist_iterfinish(SV* invlist)
      * iteration.  If they were, the addition would make the iteration
      * problematical: if the iteration hadn't reached the place where things
      * were being added, it would be ok */
-
     PERL_ARGS_ASSERT_INVLIST_ITERFINISH;
-
     *get_invlist_iter_addr(invlist) = (STRLEN) UV_MAX;
 }
 
@@ -19564,7 +19559,7 @@ Perl_reg_temp_copy (pTHX_ REGEXP *ret_x, REGEXP *rx)
 {
     struct regexp *ret;
     struct regexp *const r = ReANY(rx);
-    const bool islv = ret_x && SvTYPE(ret_x) == SVt_PVLV;
+    const bool islv = ret_x && SvIS_TYPE(ret_x, PVLV);
 
     PERL_ARGS_ASSERT_REG_TEMP_COPY;
 
@@ -20062,7 +20057,7 @@ Perl_save_re_context(pTHX)
 
         if (gvp) {
             GV * const gv = *gvp;
-	    if (SvTYPE(gv) == SVt_PVGV && GvSV(gv)) {
+	    if (SvIS_TYPE(gv, PVGV) && GvSV(gv)) {
 		/* this is a copy of save_scalar() without the GETMAGIC call, RT#76538 */
 		SV ** const sptr = &GvSVn(gv);
 		SV * osv = *sptr;
