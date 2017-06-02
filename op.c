@@ -204,7 +204,6 @@ static const char array_passed_to_stat[] =
   || OP_TYPE_IS_NN((o), OP_ENTERXSSUB))
 #define IS_LEAVESUB_OP(o)  \
     (OP_TYPE_IS_NN((o), OP_LEAVESUB) \
-  || OP_TYPE_IS_NN((o), OP_LEAVEFFI) \
   || OP_TYPE_IS_NN((o), OP_LEAVESUBLV))
 #define OP_GIMME_VOID(o)    (OP_GIMME((o),0) == G_VOID)
 #define OP_GIMME_SCALAR(o)  (OP_GIMME((o),0) == G_SCALAR)
@@ -9670,9 +9669,7 @@ Perl_newMYSUB(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs, OP *block)
 	     || (cv && CvLVALUE(cv) && !CvROOT(cv) && !CvXSUB(cv))
             ? newUNOP(OP_LEAVESUBLV, 0,
                       op_lvalue(scalarseq(block), OP_LEAVESUBLV))
-            : CvEXTERN(cv)
-                ? newUNOP(OP_LEAVEFFI, 0, scalarseq(block))
-                : newUNOP(OP_LEAVESUB, 0, scalarseq(block));
+            : newUNOP(OP_LEAVESUB, 0, scalarseq(block));
 	start = LINKLIST(block);
 	OpNEXT(block) = NULL;
         /* XXX attrs might be :const */
@@ -10103,9 +10100,7 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
                 && (!isGV(gv) || !GvASSUMECV(gv)))
             ? newUNOP(OP_LEAVESUBLV, 0,
                       op_lvalue(scalarseq(block), OP_LEAVESUBLV))
-            : CvEXTERN(PL_compcv)
-                ? newUNOP(OP_LEAVEFFI, 0, scalarseq(block))
-	        : newUNOP(OP_LEAVESUB, 0, scalarseq(block));
+            : newUNOP(OP_LEAVESUB, 0, scalarseq(block));
 	start = LINKLIST(block);
 	OpNEXT(block) = NULL;
         /* XXX attrs might be :const */
@@ -14362,6 +14357,9 @@ exception at the top level of parsing which covers all the compilation
 errors that occurred.  In the error message, the callee is referred to
 by the name defined by the I<namegv> parameter.
 
+With an CvEXTERN ensure that all declared types uniquely match FFI C
+types.
+
 =cut
 */
 
@@ -15039,7 +15037,7 @@ Perl_ck_entersub_args_proto_or_list(pTHX_ OP *entersubop,
                 SVfARG(cv_name(cv, NULL, CV_NAME_NOMAIN))));
             OpTYPE_set(entersubop, OP_ENTERFFI);
         }
-        if (CvHASSIG(cv) && CvSIGOP(cv)) { /* 99% if ffi goes here */
+        if (CvHASSIG(cv) && CvSIGOP(cv)) { /* ffi must goes here */
             if (UNLIKELY(PERLDB_SUB)) {
                 (void)ck_entersub_args_signature(entersubop, namegv, cv);
                 S_debug_undo_signature(aTHX_ cv);
@@ -15048,6 +15046,7 @@ Perl_ck_entersub_args_proto_or_list(pTHX_ OP *entersubop,
             return ck_entersub_args_signature(entersubop, namegv, cv);
         }
         else {
+            assert(!CvEXTERN(cv));
             /* Try XS call beforehand. Most XS calls are via CV not GV.
                GvXSCV is safe, because CvCONST and CvEXTERN are never set via newXS()
                which sets this flag. */
