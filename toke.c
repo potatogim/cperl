@@ -6226,7 +6226,8 @@ Perl_yylex(pTHX)
                                 arg = newSVOP(OP_CONST, 0, sarg);
                             }
                             SvCUR_set(PL_lex_stuff, 0);
-                            /* len+1: keep the final ( to announce attributes->import an arg */
+                            /* len+1: keep the final ( in "native(" to announce
+                               attributes->import an arg */
                             arg = op_prepend_elem(OP_LIST,
                                       newSVOP(OP_CONST, 0, newSVpvn(s, len)), arg);
                             attrs = op_append_elem(OP_LIST, attrs, arg);
