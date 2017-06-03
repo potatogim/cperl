@@ -78,7 +78,7 @@ extern int yydebug;
     METHDECL = 281,
     MULTIDECL = 282,
     ANONSUB = 283,
-    EXTERN = 284,
+    EXTERNSUB = 284,
     PACKAGE = 285,
     USE = 286,
     WHILE = 287,
@@ -168,7 +168,7 @@ extern int yydebug;
 #define METHDECL 281
 #define MULTIDECL 282
 #define ANONSUB 283
-#define EXTERN 284
+#define EXTERNSUB 284
 #define PACKAGE 285
 #define USE 286
 #define WHILE 287
@@ -282,6 +282,6 @@ int yyparse (void);
 #endif
 
 /* Generated from:
- * 0388bcbf25ec4afff7d91974c546683b2951e8280f46374d6d426c92eb537cf7 perly.y
+ * 3a1e6d92003f41cac6896dfd70d772da6d0b92aee35d84fc367160d0177aa43a perly.y
  * 34c0653ef7c691f2b4ac71336f4ea94e2bd925344002392f88ceeb0b435555fa regen_perly.pl
  * ex: set ro: */

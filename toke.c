@@ -382,6 +382,7 @@ static struct debug_tokens {
     { ELSE,		TOKENTYPE_NONE,		"ELSE" },
     { ELSIF,		TOKENTYPE_IVAL,		"ELSIF" },
     { EQOP,		TOKENTYPE_OPNUM,	"EQOP" },
+    { EXTERNSUB,	TOKENTYPE_NONE,		"EXTERNSUB" },
     { FOR,		TOKENTYPE_IVAL,		"FOR" },
     { FORMAT,		TOKENTYPE_NONE,		"FORMAT" },
     { FORMLBRACK,	TOKENTYPE_NONE,		"FORMLBRACK" },
@@ -4522,7 +4523,7 @@ S_intuit_method(pTHX_ char *start, SV *ioname, CV *cv)
 		return 0;	/* no assumptions -- "=>" quotes bareword */
       bare_package:
             NEXTVAL_NEXTTOKE.opval = newSVOP(OP_CONST, 0,
-				       S_newSV_maybe_utf8(aTHX_ tmpbuf, len));
+                                             S_newSV_maybe_utf8(aTHX_ tmpbuf, len));
 	    NEXTVAL_NEXTTOKE.opval->op_private = OPpCONST_BARE;
 	    PL_expect = XTERM;
 	    force_next(BAREWORD);
@@ -7245,7 +7246,7 @@ Perl_yylex(pTHX)
 	}
 	if (PL_expect == XSTATE && s[1] == '.' && s[2] == '.') {
 	    s += 3;
-	    OPERATOR(YADAYADA);
+	    OPERATOR(YADAYADA); /* really ELLIPSIS */
 	}
 	if (PL_expect == XOPERATOR || !isDIGIT(s[1])) {
 	    char tmp = *s++;
@@ -8691,6 +8692,13 @@ Perl_yylex(pTHX)
 		s = scan_word(s, PL_tokenbuf, sizeof PL_tokenbuf, TRUE, &len, &normalize);
 		if (len == 3 && memEQc(PL_tokenbuf, "sub")) {
 		    goto really_sub;
+		} else if (len == 6 && memEQc(PL_tokenbuf, "extern")) {
+                    s = skipspace(s);
+                    s = scan_word(s, PL_tokenbuf, sizeof PL_tokenbuf, TRUE, &len, &normalize);
+                    if (len == 3 && memEQc(PL_tokenbuf, "sub")) {
+                        tmp = KEY_extern;
+                        goto really_sub;
+                    }
 		} else if (UNLIKELY(normalize)) {
                     d = pv_uni_normalize(PL_tokenbuf, strlen(PL_tokenbuf), &len);
                     Copy(d, PL_tokenbuf, len+1, char);
@@ -9223,7 +9231,14 @@ Perl_yylex(pTHX)
 	    LOP(OP_SUBSTR,XTERM);
 
 	case KEY_extern:
-            return (PL_expect = XTERM,PL_bufptr = s, REPORT(OP_NULL));
+            d = skipspace(s);
+            /* allow extern as a user func. only "extern sub" is handled by us now. */
+            if (!memEQc(d, "sub"))
+                goto just_a_word;
+            /* fall through */
+            s = d + 3;
+            /*Copy(d, &PL_tokenbuf, 3, char);
+              Zero(&PL_tokenbuf[3], 8, char);*/
 	case KEY_format:
 	case KEY_sub:
 	case KEY_method:
@@ -9232,14 +9247,15 @@ Perl_yylex(pTHX)
 	    {
 		char * tmpbuf = PL_tokenbuf + 1;
                 SV *format_name = NULL;
-		const int key = tmp;
 		expectation attrful;
+                bool was_extern = cBOOL(tmp == KEY_extern);
 		bool have_name, have_proto;
                 bool try_signature = FALSE;
+		const int key = was_extern ? KEY_sub : tmp;
                 int cvflags = key == KEY_method ? CVf_METHOD : 0;
                 SSize_t off = s - SvPVX(PL_linestr);
 
-		d = s;
+                PL_lex_stuff = NULL;
 		s = skipspace(s);
                 d = SvPVX(PL_linestr) + off;
 
@@ -9286,7 +9302,7 @@ Perl_yylex(pTHX)
 		    s = skipspace(d);
 		}
 		else {
-		    if (key == KEY_my || key == KEY_our || key==KEY_state) {
+		    if (key == KEY_my || key == KEY_our || key==KEY_state || was_extern) {
 			*d = '\0';
 			/* diag_listed_as: Missing name in "%s sub" */
 			Perl_croak(aTHX_ "Missing name in \"%s\"", PL_bufptr);
@@ -9348,6 +9364,9 @@ Perl_yylex(pTHX)
                             DEBUG_T(printbuf("### Is prototype %s\n", d));
                         }
                         s = skipspace(s);
+                        if (was_extern)
+                            Perl_croak(aTHX_ "Illegal declaration of extern subroutine %" SVf
+                               ". Need signature", SVfARG(PL_subname));
                     } else {
                         DEBUG_T(printbuf("### No prototype %s, signature probably\n", d));
                         try_signature = TRUE;
@@ -9355,8 +9374,12 @@ Perl_yylex(pTHX)
                         PL_lex_stuff = NULL;
                     }
 		}
-		else
+		else {
 		    have_proto = FALSE;
+                    if (was_extern)
+                        Perl_croak(aTHX_ "Illegal declaration of extern subroutine %" SVf
+                                   ". Need signature", SVfARG(PL_subname));
+                }
 
                 if (UNLIKELY(!PL_in_class && (cvflags & CVf_METHOD)))
                     Perl_croak(aTHX_ "Can declare method %s only within a class",
@@ -9400,7 +9423,9 @@ Perl_yylex(pTHX)
 		    TOKEN(ANONSUB);
 		}
 		force_ident_maybe_lex('&');
-                if (key == KEY_multi) /* multi sub, multi, multi method */
+                if (was_extern)
+                    ITOKEN(CVf_EXTERN|cvflags,EXTERNSUB);
+                else if (key == KEY_multi) /* multi sub, multi, multi method */
                     ITOKEN(CVf_MULTI|cvflags,MULTIDECL);
                 else if (key == KEY_method)
                     ITOKEN(CVf_METHOD|cvflags,METHDECL);
