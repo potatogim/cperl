@@ -5529,14 +5529,14 @@
  *	This symbol, if defined, indicates to the C program that libffi is usable.
  */
 #ifndef USE_FFI
-#	USE_FFI		/**/
+/*#define	USE_FFI		/ **/
 #endif
-# 	I_FFI		/**/
-# 	D_LIBFFI        /**/
+/*#define 	I_FFI		/ **/
+/*#define 	D_LIBFFI        / **/
 
 #endif
 
 /* Generated from:
  * 9df6f36975160f5086c0a2377b49b8d8db2cbae976d9072a0e4b8df427643d1e config_h.SH
- * fa37929ec987a83ec6d7acfd03b9f1cb8c62515610b8c1135ec0c19a5e6fe3d3 uconfig.sh
+ * 636615695f23109b477ee741494eea1318b31d0fcb7ebdac45fe9e949ce5f381 uconfig.sh
  * ex: set ro: */
