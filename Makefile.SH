@@ -1221,6 +1221,15 @@ rebuild_storable: \$(PERL_EXE) $cwd_dep
 	\$(MAKE) -C dist/Storable PERL_CORE=1
 
 !GROK!THIS!
+if test x$useffi = xdefine
+then
+    $spitshell >>$Makefile <<'!NO!SUBS!'
+
+have_ffi.h: $(MINIPERL_EXE) $(CONFIGPM) config.h
+	$(MINIPERL) have_ffi.pl
+
+!NO!SUBS!
+fi
 $spitshell >>$Makefile <<'!NO!SUBS!'
 
 # $(PERL_EXE) and ext because pod_lib.pl needs Digest::MD5
