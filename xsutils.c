@@ -745,8 +745,10 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
     int nret;
     bool is_native = FALSE;
     char nativeconv[14];
+    char encoded[14];
 
     nativeconv[0] = '\0';
+    encoded[0]    = '\0';
     for (nret = 0 ; numattrs && (attr = *attrlist++); numattrs--) {
 	STRLEN len;
 	char *name = SvPV_const(attr, len);
@@ -759,6 +761,8 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
 	}
 	switch (SvTYPE(sv)) {
 	case SVt_PVCV:
+            /* pure,const,lvalue,method,native,native(,symbol(,prototype(),
+               nativeconv(,encoded( */
 	    switch ((int)len) {
 	    case 4:
 		if (memEQc(name, "pure")) {
@@ -835,7 +839,7 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                             CvXFFI(MUTABLE_CV(sv)) = NULL;
                         }
 			else {
-                            Perl_warn(":symbol() argument missing");
+                            Perl_warn(aTHX_ ":%s() argument missing", name);
                         }
                         goto next_attr;
 		    }
@@ -864,7 +868,7 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
 		    if (SvUTF8(attr)) SvUTF8_on(MUTABLE_SV(sv));
 		    goto next_attr;
 		}
-		if (len >= 7 && memEQc(name, "native(") && !negated) {
+		else if (len >= 7 && memEQc(name, "native(") && !negated) {
                     /* TODO: sig: libname, version, abi */
                     CV *cv = MUTABLE_CV(sv);
                     is_native = TRUE;
@@ -880,10 +884,11 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                         goto next_attr;
                     }
                 }
-		if (len >= 7 && memEQc(name, "symbol(") && !negated) {
+		else if (len >= 7 && memEQc(name, "symbol(") && !negated) {
                     CV *cv = MUTABLE_CV(sv);
                     if (!CvEXTERN(cv))
-                        Perl_warn(":symbol is only valid for :native or extern sub");
+                        Perl_warn(aTHX_ ":%s is only valid for :native or extern sub",
+                                  "symbol");
                     else if (CvXFFI(cv))
                         Perl_warner(aTHX_ packWARN(WARN_MISC),
                                   ":symbol is already resolved");
@@ -899,12 +904,44 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                     }
                     goto next_attr;
                 }
-		if (len >= 11 && memEQc(name, "nativeconv(") && !negated) {
+		else if (len >= 11 && memEQc(name, "nativeconv(") && !negated) {
                     CV *cv = MUTABLE_CV(sv);
                     if (!CvEXTERN(cv))
-                        Perl_warn(":nativeconv is only valid for :native or extern sub");
+                        Perl_warn(aTHX_ ":%s is only valid for :native or extern sub",
+                                  "nativeconv");
                     name[len-1] = '\0';
                     Copy(&name[11], nativeconv, len-11, char);
+                    goto next_attr;
+                }
+		else if (len >= 8 && memEQc(name, "encoded(") && !negated) {
+                    /* TODO: affects the previous argument or the return type if a string.
+                       Need to find it and attach to the SVOP or rettype*/
+                    CV *cv = MUTABLE_CV(sv);
+                    if (!CvEXTERN(cv))
+                        Perl_warn(aTHX_ ":%s is only valid for :native or extern sub",
+                                  "encoded");
+                    name[len-1] = '\0';
+                    Copy(&name[8], encoded, len-8, char);
+                    goto next_attr;
+                }
+                else if (len == 7 && strEQc(name, "encoded")) {
+                    if (negated) {
+                        /* TODO: remove parameter encoding layer */
+                    }
+                    else {
+                        Perl_warn(aTHX_ ":%s() argument missing", name);
+                    }
+                    goto next_attr;
+                }
+                else if (len == 10 && strEQc(name, "nativeconv")) {
+                    if (negated) {
+                        /* update nativeconv ABI */
+                        nativeconv[0] = '\0';
+                        S_prep_cif(aTHX_ (CV*)sv, NULL);
+                    }
+                    else {
+                        Perl_warn(aTHX_ ":%s() argument missing", name);
+                    }
                     goto next_attr;
                 }
 		break;
