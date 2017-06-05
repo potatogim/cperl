@@ -6824,6 +6824,11 @@ in Perl 5.28.
 (P) Perl was about to print an error message in C<$@>, but the C<$@> variable
 did not exist, even after an attempt to create it.
 
+=item Unknown ffi return type :%s, assume :long
+
+(S) The extern subroutine return type declaration is not a valid
+package name. See L<ffi/types>.
+
 =item Unknown open() mode '%s'
 
 (F) The second argument of 3-argument open() is not among the list
