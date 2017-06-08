@@ -264,6 +264,7 @@ barestmt:	PLUGSTMT
 			  if (CvOUTSIDE(fmtcv) && !CvEVAL(CvOUTSIDE(fmtcv)))
 			      pad_add_weakref(fmtcv);
 			  parser->parsed_sub = 1;
+			  parser->in_sub = 0;
 			}
 	|	subdecl subname startsub
 			{
@@ -323,7 +324,7 @@ barestmt:	PLUGSTMT
 			}
 		remember subsignature subattrlist '{' stmtseq '}'
 			{
-			  OP *sig = $6, *body = $9; CV *cv;
+                          OP *sig = $6, *body = $9, *attr = $7; CV *cv;
                           /* empty sig sub needs a nextstate at the end
                            * to clear the stack of any default expression
                            * detritus */
@@ -336,9 +337,9 @@ barestmt:	PLUGSTMT
 
 			  SvREFCNT_inc_simple_void(PL_compcv);
 			  cv = ($2->op_type == OP_CONST)
-			      ? newATTRSUB($3, $2, NULL, $7, body)
-			      : newMYSUB($3, $2, NULL, $7, body);
-			  $$ = $7 ? attrs_runtime(cv, $7) : NULL;
+			      ? newATTRSUB($3, $2, NULL, attr, body)
+			      : newMYSUB($3, $2, NULL, attr, body);
+			  $$ = attr ? attrs_runtime(cv, attr) : NULL;
 			  intro_my();
 			  parser->parsed_sub = 1;
 			}
@@ -358,12 +359,12 @@ barestmt:	PLUGSTMT
 			}
 		subsignature subattrlist ';'
 			{
-                          OP *sig = $5, *name = $2, *attrs = $6; CV *cv;
+                          OP *sig = $5, *name = $2, *attr = $6; CV *cv;
 			  SvREFCNT_inc_simple_void(PL_compcv);
 			  cv = (name->op_type == OP_CONST)
-			      ? newATTRSUB($3, name, NULL, attrs, sig)
-			      : newMYSUB($3, name, NULL, attrs, sig);
-			  $$ = attrs ? attrs_runtime(cv, attrs) : NULL;
+			      ? newATTRSUB($3, name, NULL, attr, sig)
+			      : newMYSUB($3, name, NULL, attr, sig);
+			  $$ = attr ? attrs_runtime(cv, attr) : NULL;
 			  parser->parsed_sub = 1;
 			}
 	|	PACKAGE BAREWORD BAREWORD ';'
@@ -374,7 +375,8 @@ barestmt:	PLUGSTMT
 			  $$ = NULL;
 			}
 	|	USE startsub
-			{ CvSPECIAL_on(PL_compcv); /* It's a BEGIN {} */ }
+			{ CvSPECIAL_on(PL_compcv); /* It's a BEGIN {} */
+			  parser->in_sub = 0; }
 		BAREWORD BAREWORD optlistexpr ';'
 			{
 			  SvREFCNT_inc_simple_void(PL_compcv);
@@ -651,6 +653,7 @@ startsub:	/* NULL */	/* start a regular subroutine scope */
 
 startanonsub:	/* NULL */	/* start an anonymous subroutine scope */
 			{ $$ = start_subparse(FALSE, CVf_ANON);
+                            parser->in_sub = 0;
 			    SAVEFREESV(PL_compcv); }
 	;
 
@@ -672,11 +675,11 @@ proto	:	/* NULL */
 
 /* Optional list of subroutine attributes */
 subattrlist:	/* NULL */
-			{ $$ = NULL; }
+			{ parser->in_sub = 0; $$ = NULL; }
 	|	COLONATTR THING
-			{ $$ = $2; }
+			{ parser->in_sub = 0; $$ = $2; }
 	|	COLONATTR
-			{ $$ = NULL; }
+			{ parser->in_sub = 0; $$ = NULL; }
 	;
 
 /* List of attributes for a "my" variable declaration */
@@ -687,7 +690,8 @@ myattrlist:	COLONATTR THING
 	;
 
 /* Subroutine signature */
-subsignature:	'('
+subsignature:
+                '('
 			{
 #ifndef USE_CPERL
 			  /* We shouldn't get here otherwise */
@@ -701,7 +705,11 @@ subsignature:	'('
 		')'
 			{
 			  $$ = $<opval>2;
-			  /*parser->expect = XATTRBLOCK;*/
+                          if (parser->lex_attr_state >= 5 &&
+                              parser->lex_attr_state <= 6) {
+			      parser->expect = parser->lex_attr_state;
+                              parser->lex_attr_state = 0;
+                          }
 			}
 	;
 
@@ -1089,6 +1097,7 @@ term:		termbinop
 			    {
 				$<ival>$ = start_subparse(FALSE, CVf_ANON);
 				SAVEFREESV(PL_compcv);
+				parser->in_sub = 0;
 			    } else
 				$<ival>$ = 0;
 			}

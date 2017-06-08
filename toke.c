@@ -83,12 +83,14 @@ Individual members of C<PL_parser> have their own documentation.
 #define PL_last_lop		(PL_parser->last_lop)
 #define PL_last_lop_op		(PL_parser->last_lop_op)
 #define PL_lex_state		(PL_parser->lex_state)
+#define PL_lex_attr_state	(PL_parser->lex_attr_state)
 #define PL_lex_stuff		(PL_parser->lex_stuff)
 #define PL_rsfp			(PL_parser->rsfp)
 #define PL_rsfp_filters		(PL_parser->rsfp_filters)
 #define PL_in_my		(PL_parser->in_my)
 #define PL_in_my_stash		(PL_parser->in_my_stash)
 #define PL_in_class		(PL_parser->in_class)
+#define PL_in_sub		(PL_parser->in_sub)
 #define PL_in_pod		(PL_parser->in_pod)
 #define PL_tokenbuf		(PL_parser->tokenbuf)
 #define PL_multi_end		(PL_parser->multi_end)
@@ -6136,7 +6138,8 @@ Perl_yylex(pTHX)
             default:
                 break;
             case XOPERATOR:
-                if (!PL_in_my || PL_lex_state != LEX_NORMAL)
+                /* attrs allowed in my or sub decls. not global, local */
+                if (!(PL_in_my || PL_in_sub) || PL_lex_state != LEX_NORMAL)
                     break;
                 PL_bufptr = s;	/* update in case we back off */
                 if (*s == '=') {
@@ -6392,6 +6395,7 @@ Perl_yylex(pTHX)
                 TOKEN(COLONATTR);
             }
         }
+        PL_in_sub = 0;
 	if (!PL_lex_allbrackets && PL_lex_fakeeof >= LEX_FAKEEOF_CLOSING) {
 	    s--;
 	    TOKEN(0);
@@ -9370,6 +9374,9 @@ Perl_yylex(pTHX)
                     } else {
                         DEBUG_T(printbuf("### No prototype %s, signature probably\n", d));
                         try_signature = TRUE;
+                        s = skipspace(s);
+                        if (*s == ':' && s[1] != ':')
+                            PL_lex_attr_state = attrful; /* 5 or 6 */
                         s = PL_bufptr = d;
                         PL_lex_stuff = NULL;
                     }
@@ -12318,6 +12325,7 @@ Perl_start_subparse(pTHX_ I32 is_format, U32 flags)
     SAVEI32(PL_subline);
     save_item(PL_subname);
     SAVESPTR(PL_compcv);
+    PL_in_sub = 1;
 
     PL_compcv = MUTABLE_CV(newSV_type(is_format ? SVt_PVFM : SVt_PVCV));
     CvFLAGS(PL_compcv) |= flags;
@@ -12326,7 +12334,7 @@ Perl_start_subparse(pTHX_ I32 is_format, U32 flags)
     CvPADLIST(PL_compcv) = pad_new(padnew_SAVE|padnew_SAVESUB);
     CvOUTSIDE(PL_compcv) = MUTABLE_CV(SvREFCNT_inc_simple(outsidecv));
     CvOUTSIDE_SEQ(PL_compcv) = PL_cop_seqmax;
-    if (outsidecv && /*!CvEXTERN(outsidecv) &&*/ CvPADLIST(outsidecv))
+    if (outsidecv && CvPADLIST(outsidecv))
 	CvPADLIST(PL_compcv)->xpadl_outid = CvPADLIST(outsidecv)->xpadl_id;
 
     return oldsavestack_ix;
@@ -12504,6 +12512,7 @@ Perl_yyerror_pvn(pTHX_ const char *const s, STRLEN len, U32 flags)
         }
     }
     PL_in_my = 0;
+    PL_in_sub = 0;
     PL_in_my_stash = NULL;
     return 0;
 }

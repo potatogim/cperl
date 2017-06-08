@@ -779,7 +779,7 @@ S_prep_cif(pTHX_ CV* cv, const char *nativeconv)
             }
             /*
             if (UNLIKELY(action != SIGNATURE_arg)) {
-                /*DEBUG_kv(Perl_deb(aTHX_
+                DEBUG_kv(Perl_deb(aTHX_
                     "ck_sig: default action=%d (default ignored)\n", (int)action));
                 optional = TRUE;
                 if (actions & SIGNATURE_FLAG_ref) {

@@ -9898,8 +9898,10 @@ Perl_newMYSUB(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs, OP *block)
     }
 
   done:
-    if (PL_parser)
+    if (PL_parser) {
 	PL_parser->copline = NOLINE;
+        PL_parser->lex_attr_state = 0;
+    }
     LEAVE_SCOPE(floor);
 #ifdef PERL_DEBUG_READONLY_OPS
     if (slab)
@@ -10419,8 +10421,10 @@ Perl_newATTRSUB_x(pTHX_ I32 floor, OP *o, OP *proto, OP *attrs,
     }
 
   done:
-    if (PL_parser)
+    if (PL_parser) {
 	PL_parser->copline = NOLINE;
+        PL_parser->lex_attr_state = 0;
+    }
     LEAVE_SCOPE(floor);
 
     if (!evanescent) {

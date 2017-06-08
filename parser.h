@@ -75,6 +75,7 @@ typedef struct yy_parser {
     UV		multi_close;	/* delimiter of said string */
     bool        lex_re_reparsing; /* we're doing G_RE_REPARSING */
     U8		lex_super_state;/* lexer state to save */
+    U8		lex_attr_state; /* attr lexer state */
     U16		lex_sub_inwhat;	/* "lex_inwhat" to use in sublex_push */
     I32		lex_allbrackets;/* (), [], {}, ?: bracket count */
     OP		*lex_sub_op;	/* current op in y/// or pattern */
@@ -95,6 +96,8 @@ typedef struct yy_parser {
        NOLINE) after using it.  The purpose of this is to report line num-
        bers in multiline constructs using the number of the first line. */
     line_t	copline;
+    I32		in_my;		/* we're compiling a "my"/"our" declaration */
+    I32		in_sub;		/* we're compiling a "sub/method" declaration */
     HV		*in_my_stash;	/* declared class of this "my" declaration */
     PerlIO	*rsfp;		/* current source file pointer */
     AV		*rsfp_filters;	/* holds chain of active source filters */
@@ -107,7 +110,6 @@ typedef struct yy_parser {
     line_t	preambling;	/* line # when processing $ENV{PERL5DB} */
     U8		lex_state;	/* next token is determined */
     U8		error_count;	/* how many compile errors so far, max 10 */
-    U8		in_my;		/* we're compiling a "my"/"our" declaration */
     U8		form_lex_state;	/* remember lex_state when parsing fmt */
     U8		nexttoke;
     U8		lex_fakeeof;	/* precedence at which to fake EOF */
