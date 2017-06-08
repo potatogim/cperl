@@ -969,6 +969,8 @@ Perl_prep_ffi_ret(pTHX_ CV* cv, SV** sp, void *rvalue)
         *sp = sv_2mortal(newSVnv((NV)NUM2PTR(type,rvalue))); \
     return
 
+        GCC60_DIAG_IGNORE(-Wnonnull-compare)
+        GCC_DIAG_IGNORE(-Wpointer-to-int-cast)
         if (l == 3) {
             if (memEQc(name, "int") ||
                 memEQc(name, "Int")) {
@@ -1090,6 +1092,8 @@ Perl_prep_ffi_ret(pTHX_ CV* cv, SV** sp, void *rvalue)
         }
         Perl_warn(aTHX_ "Unknown ffi return type :%s, assume :long", name);
         RET_IV(long);
+        GCC_DIAG_RESTORE
+        GCC60_DIAG_RESTORE
     }
 }
 
