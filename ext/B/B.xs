@@ -116,6 +116,13 @@ make_op_object(pTHX_ const OP *o)
     return opsv;
 }
 
+static SV *
+make_ptr_object(pTHX_ const char *ptr, const char* classname)
+{
+    SV *opsv = sv_newmortal();
+    sv_setiv(newSVrv(opsv, classname), PTR2IV(ptr));
+    return opsv;
+}
 
 static SV *
 get_overlay_object(pTHX_ const OP *o, const char * const name, U32 namelen)
@@ -2034,10 +2041,10 @@ IV
 FmLINES(format)
 	B::FM	format
     CODE:
-        PERL_UNUSED_VAR(format);
-       RETVAL = 0;
+	PERL_UNUSED_VAR(format);
+	RETVAL = 0;
     OUTPUT:
-        RETVAL
+	RETVAL
 
 
 MODULE = B	PACKAGE = B::CV		PREFIX = Cv
@@ -2052,8 +2059,20 @@ CvSTART(cv)
     ALIAS:
 	ROOT = 1
     PPCODE:
-	PUSHs(make_op_object(aTHX_ CvISXSUB(cv) ? NULL
+	PUSHs(make_op_object(aTHX_ CvISXSUB(cv) && !CvEXTERN(cv) ? NULL
 			     : ix ? CvROOT(cv) : CvSTART(cv)));
+
+void
+CvXFFI(cv)
+	B::CV	cv
+    ALIAS:
+	FFILIB = 1
+    PPCODE:
+	ST(0) = CvISXSUB(cv) && CvEXTERN(cv)
+            ? ix ? make_ptr_object(aTHX_ INT2PTR(char*,CvFFILIB(cv)), "B::FFILIB")
+                 : make_ptr_object(aTHX_ INT2PTR(char*,CvXFFI(cv)),   "B::XFFI")
+            : make_sv_object(aTHX_ NULL);
+	XSRETURN(1);
 
 I32
 CvDEPTH(cv)
@@ -2065,7 +2084,7 @@ B::PADLIST
 CvPADLIST(cv)
 	B::CV	cv
     CODE:
-	RETVAL = CvISXSUB(cv) ? NULL : CvPADLIST(cv);
+	RETVAL = CvISXSUB(cv) && !CvEXTERN(cv) ? NULL : CvPADLIST(cv);
     OUTPUT:
 	RETVAL
 
