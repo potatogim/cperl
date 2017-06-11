@@ -15025,6 +15025,7 @@ our %delta = (
             'ExtUtils::MakeMaker::Locale' => '8.04_05',
             'ExtUtils::MakeMaker'   => '8.04_05',
             'ExtUtils::MM_Unix'     => '8.04_05',
+            'ffi'                   => '0.01c',
             'fields'                => '2.25c',
             'File::Spec::Functions' => '3.36_05',
             'IO::Socket'            => '1.38_01',
@@ -15039,6 +15040,7 @@ our %delta = (
             'SelectSaver'           => '1.02_01',
             'strict'                => '1.13c',
             'VMS::Studio'           => '2.41_01',
+            'warnings'              => '1.38',
         },
         removed => {
         }
