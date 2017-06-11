@@ -100,7 +100,13 @@ Math::BigInt cpan/Math-BigInt/t/upgrade.t 7c15cac7f321ca396648ec45da6389a1283e15
 Math::BigInt cpan/Math-BigInt/t/upgradef.t 06610e9883ce805bcd6543ab959a9826f598eb40
 Math::BigInt cpan/Math-BigInt/t/with_sub.t c040328e223df6f56250f5d67dcb2c9a2f23c110
 Memoize cpan/Memoize/t/expmod_t.t 9386100cd9c95a0e8a4e001bba3aa52eec114d21
+<<<<<<< ffa6dc29c3ba89af5b45760ef213ac27898a0093
 Module::CoreList dist/Module-CoreList/lib/Module/CoreList.pm 0a5c05c89ecfce1c8dc1bf24a65abd40794cdf3c
+||||||| merged common ancestors
+Module::CoreList dist/Module-CoreList/lib/Module/CoreList.pm 7b3be7ebd42687d70532100f3ad8c494728a4551
+=======
+Module::CoreList dist/Module-CoreList/lib/Module/CoreList.pm 1dcfbeeee1ea21193f87e0ab6a9641525e5bbb35
+>>>>>>> ffi: add 0.01c helper module
 Module::CoreList dist/Module-CoreList/lib/Module/CoreList/Utils.pm d013ed514d49e14ac007743cb5b05fc2a624a321
 Module::Metadata cpan/Module-Metadata/t/lib/GeneratePackage.pm 502ffbe2609947430e6aa1a3df8064b3fef3e086
 Net::Domain cpan/libnet/lib/Net/Cmd.pm 70a007c38833667ad47ea8059c37c1b7d1c77b6c

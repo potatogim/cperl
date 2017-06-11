@@ -19,11 +19,16 @@ XXX Any important notices here
 
 =head1 Core Enhancements
 
-XXX New core language features go here.  Summarize user-visible core language
-enhancements.  Particularly prominent performance optimisations could go
-here, but most should go in the L</Performance Enhancements> section.
+=head2 extern sub - libffi
 
-[ List each enhancement as a =head2 entry ]
+A new L<ffi> was added to core, with a syntax resembling perl6
+NativeCall.  Perl6 traits are cperl L<attributes>, but attribute
+values may be deferred to run-time. Packagers need to add B<libffi> to
+their library dependencies.
+
+Not yet implemented are the :encoded() attribute for string arguments
+and return values, c-struct helpers, callback helpers and support for
+variadic (varargs) functions.
 
 =head2 Check and normalize stringified names
 
@@ -173,9 +178,9 @@ dual-life modules would have a F<Changes> file that could be cribbed.
 
 =over 4
 
-=item *
+=item L<ffi> 0.01
 
-XXX
+Helpers and more types.
 
 =back
 
