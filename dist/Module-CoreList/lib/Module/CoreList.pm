@@ -15039,6 +15039,7 @@ our %delta = (
             'SelectSaver'           => '1.02_01',
             'strict'                => '1.13c',
             'VMS::Studio'           => '2.41_01',
+            'warnings'              => '1.38',
         },
         removed => {
         }
