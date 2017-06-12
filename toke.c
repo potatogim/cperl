@@ -6417,6 +6417,7 @@ Perl_yylex(pTHX)
 	CLINE;
 	s++;
 	PL_expect = XSTATE;
+        PL_in_sub = 0;
 	TOKEN(';');
     case ')':
 	if (!PL_lex_allbrackets && PL_lex_fakeeof >= LEX_FAKEEOF_CLOSING)
@@ -12325,7 +12326,8 @@ Perl_start_subparse(pTHX_ I32 is_format, U32 flags)
     SAVEI32(PL_subline);
     save_item(PL_subname);
     SAVESPTR(PL_compcv);
-    PL_in_sub = 1;
+    if (LIKELY(PL_parser))
+        PL_in_sub = 1;
 
     PL_compcv = MUTABLE_CV(newSV_type(is_format ? SVt_PVFM : SVt_PVCV));
     CvFLAGS(PL_compcv) |= flags;
@@ -12334,7 +12336,7 @@ Perl_start_subparse(pTHX_ I32 is_format, U32 flags)
     CvPADLIST(PL_compcv) = pad_new(padnew_SAVE|padnew_SAVESUB);
     CvOUTSIDE(PL_compcv) = MUTABLE_CV(SvREFCNT_inc_simple(outsidecv));
     CvOUTSIDE_SEQ(PL_compcv) = PL_cop_seqmax;
-    if (outsidecv && CvPADLIST(outsidecv))
+    if (LIKELY(outsidecv && CvPADLIST(outsidecv)))
 	CvPADLIST(PL_compcv)->xpadl_outid = CvPADLIST(outsidecv)->xpadl_id;
 
     return oldsavestack_ix;
