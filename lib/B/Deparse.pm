@@ -81,8 +81,8 @@ BEGIN {
     # be to fake up a dummy constant that will never actually be true.
     foreach (qw(OPpSORT_INPLACE OPpSORT_DESCEND OPpITER_REVERSED OPpCONST_NOVER
 		OPpPAD_STATE PMf_SKIPWHITE RXf_SKIPWHITE
-		PMf_CHARSET PMf_KEEPCOPY PMf_NOCAPTURE CVf_ANONCONST
-		CVf_LOCKED OPpREVERSE_INPLACE OPpSUBSTR_REPL_FIRST
+		PMf_CHARSET PMf_KEEPCOPY PMf_NOCAPTURE CVf_ANONCONST CVf_EXTERN
+		CVf_LOCKED CVf_PURE OPpREVERSE_INPLACE OPpSUBSTR_REPL_FIRST
 		PMf_NONDESTRUCT OPpCONST_ARYBASE OPpEVAL_BYTES
 		OPpLVREF_TYPE OPpLVREF_SV OPpLVREF_AV OPpLVREF_HV
 		OPpLVREF_CV OPpLVREF_ELEM SVpad_STATE SVphv_CLASS HvAUXf_ROLE)) {
@@ -447,7 +447,11 @@ sub _pessimise_walk {
 	}
 
 	if ($op->flags & OPf_KIDS) {
-	    $self-> _pessimise_walk($op->first);
+            if (ref($op) eq 'B::OP') {
+                warn $op, $op->name," ",sprintf("0x%x",$op->flags);
+            } else {
+                $self-> _pessimise_walk($op->first);
+            }
 	}
 
     }
@@ -631,9 +635,10 @@ sub next_todo {
         }
 	my $ret = "$pragmata${p}${l}" . $self->keyword("sub") . " $name "
 	      . $self->deparse_sub($cv);
-        if (1 # cperl only. cannot load $Config::Config{usecperl}
-        and $name eq "DynaLoader::dl_load_flags"
-        and $ret eq "sub DynaLoader::dl_load_flags () { 0 }\n") {
+        if (1 and # cperl only. cannot load $Config::Config{usecperl}
+            $name eq "DynaLoader::dl_load_flags" and
+            $ret =~ /^sub DynaLoader::dl_load_flags \(\) \{ 0 \}\n+/m)
+        {
             $ret = "";
         }
 	$self->{'subs_declared'}{$name} = 1;
@@ -1370,7 +1375,7 @@ sub deparse_signature {
 
 # Deparse a sub. Returns everything except the 'sub foo',
 # e.g.  ($$) : method { ...; }
-# or    ($a, $b) : prototype($$) lvalue;
+# or    ($a, $b) :prototype($$) :lvalue;
 
 sub deparse_sub {
     my $self = shift;
@@ -1393,11 +1398,13 @@ Carp::confess("SPECIAL in deparse_sub") if $cv->isa("B::SPECIAL");
             $protosig = $proto;
         }
     }
-    if ($cv->CvFLAGS & (CVf_METHOD|CVf_LOCKED|CVf_LVALUE|CVf_ANONCONST)) {
+    if ($cv->CvFLAGS & (CVf_METHOD|CVf_LOCKED|CVf_LVALUE|CVf_ANONCONST|CVf_EXTERN)) {
         push @attrs, "lvalue" if $cv->CvFLAGS & CVf_LVALUE;
         push @attrs, "locked" if $cv->CvFLAGS & CVf_LOCKED;
         push @attrs, "method" if $cv->CvFLAGS & CVf_METHOD;
         push @attrs, "const"  if $cv->CvFLAGS & CVf_ANONCONST;
+        push @attrs, "pure"   if $cv->CvFLAGS & CVf_PURE;
+        push @attrs, "native" if $cv->CvFLAGS & CVf_EXTERN;
     }
 
     local($self->{'curcv'}) = $cv;
@@ -1407,7 +1414,13 @@ Carp::confess("SPECIAL in deparse_sub") if $cv->isa("B::SPECIAL");
     my $body ='';
     my $root = $cv->ROOT;
     local $B::overlay = {};
-    if (not null $root) { # skip const_sv_xsub
+    if ($cv->CvFLAGS & CVf_EXTERN) {
+        my $sigop = $cv->SIGOP;
+        $protosig = $self->deparse_signature($sigop, $cv);
+        $body = ';'
+        # TODO: :symbol(), :nativeconv(), :encoded(), :native()
+    }
+    elsif (not null $root) { # skip const_sv_xsub
 	$self->pad_subs($cv);
 	$self->pessimise($root, $cv->START);
 	my $lineseq = $root->first;
@@ -1448,7 +1461,7 @@ Carp::confess("SPECIAL in deparse_sub") if $cv->isa("B::SPECIAL");
     else {
 	my $sv = $cv->const_sv;
 	if ($$sv) {
-	    # uh-oh. inlinable sub... format it differently
+	    # format inlinable sub differently
 	    $body = "{ " . $self->const($sv, 0) . " }\n";
 	} else { # XSUB? (or just a declaration)
 	    $body = ';'
@@ -1456,7 +1469,8 @@ Carp::confess("SPECIAL in deparse_sub") if $cv->isa("B::SPECIAL");
     }
     $protosig = defined $protosig ? "($protosig) " : "";
     my $attrs = '';
-    $attrs = ': ' . join('', map "$_ ", @attrs) if @attrs;
+    $attrs = join('', map ":$_ ", @attrs) if @attrs;
+    $attrs = substr($attrs,0,-1) if @attrs;
     return "$protosig$attrs$body\n";
 }
 
