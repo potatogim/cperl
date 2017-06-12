@@ -6227,9 +6227,11 @@ Perl_yylex(pTHX)
                             else if (*a == '"' || *a == '\'') {
                                 sv_chop(sarg, a+1);
                                 SvCUR_set(sarg, l-2);
-                                arg = newSVOP(OP_CONST, 0, sarg);
+                                SvTEMP_off(sarg);
+                                arg = newSVOP(OP_CONST, 0, SvREFCNT_inc_NN(sarg));
                             } else { /* XXX bareword as call or const? for now only const asis */
-                                arg = newSVOP(OP_CONST, 0, sarg);
+                                SvTEMP_off(sarg);
+                                arg = newSVOP(OP_CONST, 0, SvREFCNT_inc_NN(sarg));
                             }
                             SvCUR_set(PL_lex_stuff, 0);
                             /* len+1: keep the final ( in "native(" to announce
@@ -6351,8 +6353,10 @@ Perl_yylex(pTHX)
 #endif
                         /* Handle only the rest via attributes->import */
                         else {
+                            OP* o;
                         load_attributes:
-                            attrs = op_append_elem(OP_LIST, attrs, newSVOP(OP_CONST, 0, sv));
+                            o = newSVOP(OP_CONST, 0, sv);
+                            attrs = op_append_elem(OP_LIST, attrs, o);
                         }
                     }
                     s = skipspace(d);
