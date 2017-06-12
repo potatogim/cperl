@@ -15019,6 +15019,7 @@ our %delta = (
             'B'                     => '1.68_07',
             'B::C'                  => '1.55_04',
             'base'                  => '2.26c',
+            'B::Deparse'            => '1.40_04c',
             'Devel::Peek'           => '1.26_02',
             'Devel::PPPort'         => '3.36_02',
             'ExtUtils::Constant'    => '0.23_09',

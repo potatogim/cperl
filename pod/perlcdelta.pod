@@ -178,7 +178,7 @@ dual-life modules would have a F<Changes> file that could be cribbed.
 
 =over 4
 
-=item L<ffi> 0.01
+=item L<ffi> 0.01c
 
 Helpers and more types.
 
@@ -201,14 +201,21 @@ with deferring the attributes::import call after an assignment.
 
 See L<[cperl #294]|https://github.com/perl11/cperl/issues/294>.
 
-Support the new core attributes :native, :native($libname),
-:symbol($c_name), :nativeconv(abi), :encoded(encoding) I<(NYI)>.
+Add ffi support.
+Support the new core attributes :native, :native($libname), :symbol($c_name),
+:nativeconv(abi), :encoded(encoding) I<(NYI)>.
 
 =item L<B> 1.68_07
+
+Add ffi support
 
 Add non-destructive $cv->PUREGV method, which does not create a GV
 from a CvNAMED $cv.
 Warning: $cv->GV does create a GV from a CvNAMED $cv.
+
+=item L<B::Deparse> 1.40_04c
+
+Add ffi support
 
 =item L<B::C> 1.55_04
 
@@ -289,7 +296,7 @@ Improve some tests on missing network connections
 =item L<Opcode> 1.39_02c
 
 Added new 'oelem' and 'oelemfast' to :base_core
-Restrict the new ops 'enterffi', 'leaveffi'.
+Restrict the new 'enterffi' op.
 
 =item L<Search::Dict> 1.07_01
 
