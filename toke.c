@@ -6234,6 +6234,7 @@ Perl_yylex(pTHX)
                             SvCUR_set(PL_lex_stuff, 0);
                             /* len+1: keep the final ( in "native(" to announce
                                attributes->import an arg */
+                            /* produce flat lists for dup_attrlist */
                             arg = op_prepend_elem(OP_LIST,
                                       newSVOP(OP_CONST, 0, newSVpvn(s, len)), arg);
                             attrs = op_append_elem(OP_LIST, attrs, arg);
