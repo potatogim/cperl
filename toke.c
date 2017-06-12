@@ -6158,6 +6158,7 @@ Perl_yylex(pTHX)
                 while (isIDFIRST_lazy_if_safe(s, PL_bufend, UTF)) {
                     I32 tmp;
                     SV *sv;
+                    bool saw_native = FALSE;
                     d = scan_word(s, PL_tokenbuf, sizeof PL_tokenbuf, FALSE,
                                   &len, &normalize);
                     if (isLOWER(*s) && (tmp = keyword(PL_tokenbuf, len, 0))) {
@@ -6192,8 +6193,9 @@ Perl_yylex(pTHX)
                                 "Unterminated attribute parameter in attribute list");
                         }
                         /* handle run-time variables in attrs args */
-                        if ((len == 6 && (memEQc(s, "native") || memEQc(s, "symbol")))
-                            || strEQc(s, "nativeconv") || strEQc(s, "encoded")) {
+                        if (PL_in_sub &&
+                            ((len == 6 && (memEQc(s, "native") || memEQc(s, "symbol")))
+                             || strEQc(s, "nativeconv") || strEQc(s, "encoded"))) {
                             /* evaluate scalars and barewords, resp. add CONST strings.
                                :native($lib) :native("mysqlclient") :native(msqlclient)
                                :symbol('c_sym'), ...
@@ -6283,6 +6285,7 @@ Perl_yylex(pTHX)
                                         "Attribute \"locked\" is deprecated");
                                 }
                                 else if (memEQc(pv, "native")) {
+                                    saw_native = TRUE;
                                     CvEXTERN_on(PL_compcv);
                                     /* need to call DynaLoader::dl_load_file */
                                     goto load_attributes;
@@ -6328,18 +6331,18 @@ Perl_yylex(pTHX)
                         }
 #endif
 #ifdef USE_CPERL
-                        else if (!PL_in_my && len == 4 && memEQc(pv, "pure")) {
+                        else if (PL_in_sub && len == 4 && memEQc(pv, "pure")) {
                             sv_free(sv);
                             CvPURE_on(PL_compcv);
                         }
-                        else if (!PL_in_my && memEQs(pv, len, "multi")) {
+                        else if (PL_in_sub && memEQs(pv, len, "multi")) {
                             sv_free(sv);
                             CvMULTI_on(PL_compcv);
                         }
                         /* Check sub return type here, so we can pass an empty attrs
                            to newATTRSUB. This allows any known user or core type
                            to be used. */
-                        else if ((typestash = find_in_my_stash(pv, len))) {
+                        else if (PL_in_sub && (typestash = find_in_my_stash(pv, len))) {
                             CvTYPED_on(PL_compcv);
                             /* skip attr callback for existing coretypes */
                             if (!find_in_coretypes(pv, len))
@@ -6355,6 +6358,12 @@ Perl_yylex(pTHX)
                         else {
                             OP* o;
                         load_attributes:
+                            /* implicit extern sub */
+                            if (PL_in_sub && CvEXTERN(PL_compcv) && !saw_native) {
+                                saw_native = TRUE;
+                                attrs = op_append_elem(OP_LIST, attrs,
+                                            newSVOP(OP_CONST, 0, newSVpvs("native")));
+                            }
                             o = newSVOP(OP_CONST, 0, sv);
                             attrs = op_append_elem(OP_LIST, attrs, o);
                         }

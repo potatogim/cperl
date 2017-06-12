@@ -1353,15 +1353,15 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
 		    if (ckWARN(WARN_ILLEGALPROTO))
 			Perl_validate_proto(aTHX_ subname, proto, TRUE);
 		    Perl_cv_ckproto_len_flags(aTHX_ cv,
-		                                    (const GV *)subname,
-		                                    name+10, len-11,
-		                                    SvUTF8(attr));
+                                              (const GV *)subname,
+                                              name+10, len-11,
+                                              SvUTF8(attr));
 		    sv_setpvn(MUTABLE_SV(sv), name+10, len-11);
 		    if (SvUTF8(attr)) SvUTF8_on(MUTABLE_SV(sv));
 		    goto next_attr;
 		}
 		else if (len >= 7 && memEQc(name, "native(") && !negated) {
-                    /* TODO: sig: libname, version, abi */
+                    /* TODO: sig: libname, version */
                     CV *cv = MUTABLE_CV(sv);
                     is_native = TRUE;
                     if (len == 7 && numattrs>1) {
@@ -1492,15 +1492,8 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
         ;
     }
 
-    /* XXX Missing import call */
-    if (UNLIKELY(SvTYPE(sv) == SVt_PVCV && CvEXTERN(sv) && !CvXFFI(sv))) {
-        is_native = TRUE;
-        S_find_native(aTHX_ (CV*)sv, NULL);
-    }
-    if (is_native) {
+    if (is_native)
         prep_cif((CV*)sv, (const char*)nativeconv);
-    }
-
     return nret;
 }
 
@@ -1708,7 +1701,7 @@ usage:
             GV * const gv = gv_fetchmeth_pv(stash, name, -1, 0);
             if (gv && isGV(gv) && (cb = MUTABLE_SV(GvCV(gv)))) {
                 SV *pkgname = newSVpvn_flags(HvNAME(stash), HvNAMELEN(stash),
-                                             HvNAMEUTF8(stash));
+                                             HvNAMEUTF8(stash)|SVs_TEMP);
                 PUSHMARK(SP);
                 XPUSHs(pkgname);
                 XPUSHs(rv);
