@@ -10,6 +10,9 @@ addons:
     #- gcc-4.8
     - gcc-multilib
     - libgdbm-dev:i386
+    - libffi6:i386
+    - libffi-dev
+    - libffi-dev:i386
   coverity_scan:
     project:
       name: perl11/cperl
