@@ -26,7 +26,7 @@
 #if defined(USE_FFI) && defined(I_FFI)
 # include <ffi.h>
 #endif
-#ifdef I_DLFCN
+#if defined(I_DLFCN) && !defined(_MSC_VER)
 #  include <dlfcn.h> /* for RTLD_DEFAULT: -2 on bsd */
 #endif
 #ifndef RTLD_DEFAULT
