@@ -696,7 +696,7 @@ PP(pp_enterffi)
         SP = MARK+1; /* PL_stack_base + POPMARK; */
         PUTBACK;
         if (GIMME_V != G_VOID) { /* assume XSRETURN(1) */
-            prep_ffi_ret(cv, SP, (void*)rvalue);
+            prep_ffi_ret(cv, SP, (char*)rvalue);
         } else
             PL_stack_sp--;
 

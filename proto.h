@@ -7573,7 +7573,7 @@ PERL_CALLCONV void	Perl_dump_sv_child(pTHX_ SV *sv)
 
 #endif
 #if defined(D_LIBFFI) && defined(USE_FFI)
-PERL_CALLCONV void	Perl_prep_ffi_ret(pTHX_ CV* cv, SV** sp, void *rvalue)
+PERL_CALLCONV void	Perl_prep_ffi_ret(pTHX_ CV* cv, SV** sp, char *rvalue)
 			__attribute__global__
 			__attribute__nonnull__(pTHX_1)
 			__attribute__nonnull__(pTHX_2);

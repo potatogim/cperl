@@ -35,12 +35,19 @@ sub check_labs_fields { # 3
   undef *labs;
 }
 
-sub check_labs { # 4
+sub check_labs {
   my $msg = shift;
   ok(!$@, "no errors $@");
   has_sym(\&labs);
   is(labs(-1), 1, $msg);
   undef *labs;
+}
+sub check_abs { # 4
+  my $msg = shift;
+  ok(!$@, "no errors $@");
+  has_sym(\&abs);
+  is(abs(-1), 1, $msg);
+  undef *abs;
 }
 
 # first check ffi fields without calling the ffi (wrong sig or rettype)
@@ -51,26 +58,26 @@ check_labs_fields("sub labs() :native;"); # :void
 check_labs_fields("sub labs() :native :int;");
 
 eval 'extern sub ffilabs() :symbol("labs");';
-has_sym(\&ffilabs); undef *ffilabs;
-undef *ffilabs;
+has_sym(\&ffilabs);
 
-eval 'extern sub llabs() :symbol("labs");';
-has_sym(\&llabs);
+eval 'extern sub labs() :symbol("abs");';
+has_sym(\&labs); # possible name mixup. both do exist
 
-# equivalence of XFFI syms
-eval 'extern sub labs(int $i) :int;';
-my $ori  = B::svref_2object(\&labs);
-my $xsym = B::svref_2object(\&llabs);
+# equivalence of XFFI syms: abs
+eval 'extern sub abs(int $i) :int;';
+my $ori  = B::svref_2object(\&abs);
+my $xsym = B::svref_2object(\&labs);
 ok ((ref $ori->XFFI eq ref $xsym->XFFI) &&
     (${$ori->XFFI} == ${$xsym->XFFI}), "same CvXFFI sym") # 17
   or note $ori->XFFI, $xsym->XFFI;
-undef *llabs;
+undef *labs;
 
 # different code-path than extern above. was broken
 eval 'sub llabs() :native :symbol("labs");';
-has_sym(\&llabs);
+has_sym(\&llabs); # possible name mixup. both do exist
 
-# equivalence of XFFI syms
+# equivalence of XFFI syms: labs
+$ori  = B::svref_2object(\&ffilabs);
 $xsym = B::svref_2object(\&llabs);
 ok ((ref $ori->XFFI eq ref $xsym->XFFI) &&
     (${$ori->XFFI} == ${$xsym->XFFI}), "same CvXFFI sym") # 17
@@ -78,20 +85,20 @@ ok ((ref $ori->XFFI eq ref $xsym->XFFI) &&
 undef *llabs;
 
 # now call it with valid sigs and types
-check_labs("extern labs");
+check_abs("extern labs");
 
-eval 'sub labs(int $i) :native :int;';
-check_labs("labs :native");
+eval 'sub abs(int $i) :native :int;';
+check_abs("abs :native");
 
 # non coretype, see <lib/ffi.t> for all types
 BEGIN { %long::; }
-eval 'extern sub labs(int $i) :long;';
-check_labs("extern abs :long");
+eval 'extern sub labs(long $i) :long;';
+check_labs("extern labs :long");
 undef %long::;
 
-eval 'sub labs(int $i) :native("c") :int;';
-check_labs("labs :native('c')");
+eval 'sub abs(int $i) :native("c") :int;';
+check_abs("abs :native('c')");
 
-eval '$c="c"; sub labs(int $i) :native($c) :int;';
-check_labs("labs :native(\$name)");
+eval '$c="c"; sub abs(int $i) :native($c) :int;';
+check_abs("abs :native(\$name)");
 

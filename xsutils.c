@@ -964,7 +964,7 @@ but they need a declaration via C<use ffi>.
 =cut
 */
 void
-Perl_prep_ffi_ret(pTHX_ CV* cv, SV** sp, void *rvalue)
+Perl_prep_ffi_ret(pTHX_ CV* cv, SV** sp, char *rvalue)
 {
     const HV* typestash = PadnameTYPE(PAD_COMPNAME(0)); /* first slot: rettype */
     PERL_UNUSED_ARG(cv);
@@ -975,6 +975,45 @@ Perl_prep_ffi_ret(pTHX_ CV* cv, SV** sp, void *rvalue)
     } else {
         const char *name = HvNAME(typestash);
         int l = HvNAMELEN(typestash);
+#ifdef __cplusplus
+#define RET_IV(type)                                \
+    if (!SvIOK(*sp))                                \
+        *sp = sv_2mortal(newSViv(0));               \
+    memcpy(&SvIVX(*sp), &rvalue, sizeof(type));     \
+    return
+#define RET_UV(type)                                \
+    if (!SvIOK(*sp))                                \
+        *sp = sv_2mortal(newSVuv(0));               \
+    else                                            \
+        SvIsUV_on(*sp);                             \
+    memcpy(&SvUVX(*sp), &rvalue, sizeof(type));     \
+    return
+#define RET_NV(type)                                \
+    if (!SvNOK(*sp))                                \
+        *sp = sv_2mortal(newSVnv(0));               \
+    memcpy(&SvNVX(*sp), &rvalue, sizeof(type));     \
+    return
+#else
+#define RET_IV(type)                                \
+    if (SvIOK(*sp))                                 \
+        SvIVX(*sp) = (IV)INT2PTR(type,rvalue);      \
+    else                                            \
+        *sp = sv_2mortal(newSViv((IV)INT2PTR(type,rvalue))); \
+    return
+#define RET_UV(type)                                \
+    if (SvIOK(*sp)) {                               \
+        SvIsUV_on(*sp);                             \
+        SvUVX(*sp) = (UV)INT2PTR(type,rvalue);      \
+    } else                                          \
+        *sp = sv_2mortal(newSVuv((UV)INT2PTR(type,rvalue))); \
+    return
+#define RET_NV(type)                                \
+    if (SvNOK(*sp))                                 \
+        SvNVX(*sp) = (NV)NUM2PTR(type,rvalue);      \
+    else                                            \
+        *sp = sv_2mortal(newSVnv((NV)NUM2PTR(type,rvalue))); \
+    return
+#endif
 
         if (!name) { /* default :void */
             PL_stack_sp--;
@@ -984,29 +1023,11 @@ Perl_prep_ffi_ret(pTHX_ CV* cv, SV** sp, void *rvalue)
             name += 6;
             l -= 6;
         }
-
-#define RET_IV(type)                                \
-    if (SvIOK(*sp))                                 \
-        SvIVX(*sp) = (IV)(type)rvalue;              \
-    else                                            \
-        *sp = sv_2mortal(newSViv((IV)(type)rvalue)); \
-    return
-#define RET_UV(type)                                \
-    if (SvIOK(*sp)) {                               \
-        SvIsUV_on(*sp);                             \
-        SvUVX(*sp) = (UV)(type)rvalue;              \
-    } else                                          \
-        *sp = sv_2mortal(newSVuv((UV)(type)rvalue)); \
-    return
-#define RET_NV(type)                                \
-    if (SvNOK(*sp))                                 \
-        SvNVX(*sp) = (NV)NUM2PTR(type,rvalue);      \
-    else                                            \
-        *sp = sv_2mortal(newSVnv((NV)NUM2PTR(type,rvalue))); \
-    return
-
         GCC60_DIAG_IGNORE(-Wnonnull-compare)
+#ifndef __cplusplus
         GCC_DIAG_IGNORE(-Wpointer-to-int-cast)
+#endif
+
         if (l == 3) {
             if (memEQc(name, "int") ||
                 memEQc(name, "Int")) {
@@ -1016,13 +1037,13 @@ Perl_prep_ffi_ret(pTHX_ CV* cv, SV** sp, void *rvalue)
                      memEQc(name, "Str")) {
                 /* TODO encoded layer, as magic */
                 if (SvPOK(*sp)) {
-                    SvPV_set(*sp, (char*)rvalue);
-                    SvCUR_set(*sp, strlen((char*)rvalue));
+                    SvPV_set(*sp, rvalue);
+                    SvCUR_set(*sp, strlen(rvalue));
                     SvUTF8_off(*sp);
                 }
                 else
-                    *sp = sv_2mortal(newSVpvn((char*)rvalue,
-                                              strlen((char*)rvalue)));
+                    *sp = sv_2mortal(newSVpvn(rvalue,
+                                              strlen(rvalue)));
                 return;
             }
             else if (memEQc(name, "ptr")) {
@@ -1177,8 +1198,13 @@ S_find_symbol(pTHX_ CV* cv, char *name)
     nret = call_sv((SV*)dl_find_symbol, G_SCALAR);
     SPAGAIN;
     if (nret == 1 && SvIOK(TOPs)) {
+#ifdef __cplusplus
+        long ptr = POPl;
+        memcpy(&CvXFFI(cv), &ptr, sizeof(XSUBADDR_t));
+#else
+        CvXFFI(cv) = INT2PTR(XSUBADDR_t, POPl);
+#endif
         CvFFILIB(cv) = 0;
-        CvXFFI(cv) = (XSUBADDR_t)POPl;
         CvSLABBED_off(cv);
     }
 }
@@ -1241,8 +1267,13 @@ S_find_native(pTHX_ CV* cv, char *libname)
         nret = call_sv((SV*)dl_find_symbol, G_SCALAR);
         SPAGAIN;
         if (nret == 1 && SvIOK(TOPs)) {
+#ifdef __cplusplus
+            long ptr = POPl;
+            memcpy(&CvXFFI(cv), &ptr, sizeof(XSUBADDR_t));
+#else
+            CvXFFI(cv) = INT2PTR(XSUBADDR_t, POPl);
+#endif
             CvFFILIB(cv) = 0;
-            CvXFFI(cv) = (XSUBADDR_t)POPl;
             CvSLABBED_off(cv);
         }
     }
@@ -1262,9 +1293,9 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
     encoded[0]    = '\0';
     for (nret = 0 ; numattrs && (attr = *attrlist++); numattrs--) {
 	STRLEN len;
-	char *name = SvPV_const(attr, len);
+	char *name = SvPV(attr, len);
 	const bool negated = (*name == '-');
-        HV *typestash;
+	HV *typestash;
 
 	if (negated) {
 	    name++;
@@ -1359,9 +1390,14 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
 		break;
 	    default:
 		if (len > 10 && memEQc(name, "prototype(")) {
-                    const CV *cv = MUTABLE_CV(sv);
 		    SV * proto = newSVpvn(name+10,len-11);
+#ifdef __cplusplus
+                    CV *cv = MUTABLE_CV(sv);
+		    HEK * hek = CvNAME_HEK(cv);
+#else
+                    const CV *cv = MUTABLE_CV(sv);
 		    HEK *const hek = CvNAME_HEK(cv);
+#endif
 		    SV *subname;
 		    if (name[len-1] != ')')
 			Perl_croak(aTHX_ "Unterminated attribute parameter in attribute list");
@@ -1409,7 +1445,12 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                     /* sub EXISTING_SYM () :native :symbol(OTHERSYM);
                      but works fine with extern sub EXISTING_SYM () :symbol(OTHERSYM);*/
                     else {
-                        void *old = CvXFFI(cv);
+#ifdef __cplusplus
+                        char *old;
+                        memcpy(&old, &CvXFFI(cv), sizeof(char*));
+#else
+                        char *old = INT2PTR(char*,CvXFFI(cv));
+#endif
                         if (len == 7 && numattrs>1) {
                             attr = *attrlist++;
                             numattrs--;
@@ -1425,7 +1466,7 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                             S_find_symbol(aTHX_ cv, name+7);
                         }
                         /* only warn on superfluous :symbol() redefinition */
-                        if (old && old == CvXFFI(cv))
+                        if (old && old == INT2PTR(char*,CvXFFI(cv)))
                             Perl_ck_warner(aTHX_ packWARN(WARN_REDEFINE),
                                            ":symbol is already resolved");
                     }
