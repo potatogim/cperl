@@ -117,7 +117,7 @@ make_op_object(pTHX_ const OP *o)
 }
 
 static SV *
-make_ptr_object(pTHX_ const void *ptr, const char* classname)
+make_ptr_object(pTHX_ const char *ptr, const char* classname)
 {
     SV *opsv = sv_newmortal();
     sv_setiv(newSVrv(opsv, classname), PTR2IV(ptr));
@@ -2069,9 +2069,9 @@ CvXFFI(cv)
 	FFILIB = 1
     PPCODE:
 	ST(0) = CvISXSUB(cv) && CvEXTERN(cv)
-              ? ix ? make_ptr_object(aTHX_ INT2PTR(void*,CvFFILIB(cv)), "B::FFILIB")
-                   : make_ptr_object(aTHX_ CvXFFI(cv), "B::XFFI")
-              : make_sv_object(aTHX_ NULL);
+            ? ix ? make_ptr_object(aTHX_ INT2PTR(char*,CvFFILIB(cv)), "B::FFILIB")
+                 : make_ptr_object(aTHX_ INT2PTR(char*,CvXFFI(cv)),   "B::XFFI")
+            : make_sv_object(aTHX_ NULL);
 	XSRETURN(1);
 
 I32
