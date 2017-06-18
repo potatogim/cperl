@@ -4314,7 +4314,7 @@ S_dup_attrlist(pTHX_ OP *o)
 	for (o = OpFIRST(o); o; o = OpSIBLING(o)) {
 	    if (IS_CONST_OP(o))
 		rop = op_append_elem(OP_LIST, rop,
-		          newSVOP(OP_CONST, o->op_flags /*|| (o->op_private<<8)*/,
+		          newSVOP(o->op_type, o->op_flags /*|| (o->op_private<<8)*/,
                                   SvREFCNT_inc_NN(cSVOPo->op_sv)));
 	    else if (IS_TYPE(o, GVSV))
 		rop = op_append_elem(OP_LIST, rop,
