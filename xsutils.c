@@ -1350,7 +1350,7 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                             CvXFFI(MUTABLE_CV(sv)) = NULL;
                         }
 			else {
-                            Perl_warn(aTHX_ ":%s() argument missing", name);
+                            Perl_croak(aTHX_ ":%s() attribute argument missing", name);
                         }
                         goto next_attr;
 		    }
@@ -1386,7 +1386,13 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                     if (len == 7 && numattrs>1) {
                         attr = *attrlist++;
                         numattrs--;
-                        S_find_native(aTHX_ cv, SvPVX(attr));
+                        if (SvPOK(attr))
+                            S_find_native(aTHX_ cv, SvPVX(attr));
+                        else
+                            /* diag_listed_as: Invalid :%s(%s) attribute argument type */
+                            Perl_croak(aTHX_
+                                    "Invalid :%s%" SVf ") attribute argument type",
+                                    name, SVfARG(attr));
                         goto next_attr;
                     }
                     else if (len > 7) {
@@ -1407,7 +1413,13 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                         if (len == 7 && numattrs>1) {
                             attr = *attrlist++;
                             numattrs--;
-                            S_find_symbol(aTHX_ cv, SvPVX(attr));
+                            if (SvPOK(attr))
+                                S_find_symbol(aTHX_ cv, SvPVX(attr));
+                            else
+                                /* diag_listed_as: Invalid :%s(%s) attribute argument type */
+                                Perl_croak(aTHX_
+                                    "Invalid :%s%" SVf ") attribute argument type",
+                                    name, SVfARG(attr));
                         } else {
                             name[len-1] = '\0';
                             S_find_symbol(aTHX_ cv, name+7);
@@ -1441,7 +1453,7 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                 }
                 else if (len == 7 && strEQc(name, "encoded")) {
                     if (negated) {
-                        /* TODO: remove parameter encoding layer */
+                        /* TODO: remove parameter encoding layer. see ffienc magic */
                         encoded[0] = '\0';
                     }
                     else {
@@ -1458,7 +1470,7 @@ modify_SV_attributes(pTHX_ SV *sv, SV **retlist, SV **attrlist, int numattrs)
                             nativeconv[0] = '\0';
                     }
                     else {
-                        Perl_warn(aTHX_ ":%s() argument missing", name);
+                        Perl_croak(aTHX_ ":%s() attribute argument missing", name);
                     }
                     goto next_attr;
                 }
