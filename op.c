@@ -4470,11 +4470,12 @@ Perl_attrs_runtime(pTHX_ CV *cv, OP *attrs)
 =for apidoc apply_attrs
 
 Calls the attribute importer with the target and a list of attributes.
-As manually done via C<BEGIN{ require; attributes->import($pkg, $rv, @attrs)} >.
+As manually done via C<BEGIN{ require; attributes->import($pkg, $rv, @attrs)}>.
 
-See L</apply_attrs_my> for the variant which defers the import call to run-time,
-enabling run-time attribute arguments, i.e. variables, not only constant barewords,
-and see L</attrs_runtime> which extracts the run-time part of attrs.
+See L</apply_attrs_my> for the variant which defers the import call to
+run-time, enabling run-time attribute arguments, i.e. variables, not
+only constant barewords, and see L</attrs_runtime> which extracts the
+run-time part of attrs.
 
 
 =cut
@@ -4559,7 +4560,7 @@ S_apply_attrs_my(pTHX_ HV *stash, OP *target, OP *attrs, OP **imopsp)
     /* our LEX :const, or sub :ATTR from attrs_runtime() */
     } else if ( ( IS_RV2ANY_OP(target) || IS_TYPE(target, RV2CV) )
                && OP_TYPE_IS(OpFIRST(target), OP_GV) ) {
-        arg = newSVREF(newGVOP(OP_GV,0,cGVOPx_gv(OpFIRST(target))));
+        arg = newSVREF(newGVOP(OP_GV, 0, cGVOPx_gv(OpFIRST(target))));
         arg->op_targ = target->op_targ;
         if (ISNT_TYPE(target, RV2SV))
             OpTYPE_set(arg, target->op_type);
@@ -4659,7 +4660,8 @@ S_move_proto_attr(pTHX_ OP **proto, OP **attrs, const GV * name)
     if (IS_CONST_OP(o)) {
         pv = SvPV(cSVOPo_sv, pvlen);
         if (pvlen >= 10 && memEQ(pv, "prototype(", 10)) {
-            SV * const tmpsv = newSVpvn_flags(pv + 10, pvlen - 11, SvUTF8(cSVOPo_sv));
+            SV * const tmpsv = newSVpvn_flags(pv + 10, pvlen - 11,
+                                              SvUTF8(cSVOPo_sv));
             SV ** const tmpo = cSVOPx_svp(o);
             SvREFCNT_dec(cSVOPo_sv);
             *tmpo = tmpsv;
@@ -4675,7 +4677,8 @@ S_move_proto_attr(pTHX_ OP **proto, OP **attrs, const GV * name)
             if (IS_CONST_OP(o)) {
                 pv = SvPV(cSVOPo_sv, pvlen);
                 if (pvlen >= 10 && memEQ(pv, "prototype(", 10)) {
-                    SV * const tmpsv = newSVpvn_flags(pv + 10, pvlen - 11, SvUTF8(cSVOPo_sv));
+                    SV * const tmpsv = newSVpvn_flags(pv + 10, pvlen - 11,
+                                                      SvUTF8(cSVOPo_sv));
                     SV ** const tmpo = cSVOPx_svp(o);
                     SvREFCNT_dec(cSVOPo_sv);
                     *tmpo = tmpsv;
@@ -4683,7 +4686,8 @@ S_move_proto_attr(pTHX_ OP **proto, OP **attrs, const GV * name)
                         STRLEN new_len;
                         const char * newp = SvPV(cSVOPo_sv, new_len);
                         Perl_warner(aTHX_ packWARN(WARN_MISC),
-                            "Attribute prototype(%" UTF8f ") discards earlier prototype attribute in same sub",
+                            "Attribute prototype(%" UTF8f
+                            ") discards earlier prototype attribute in same sub",
                             UTF8fARG(SvUTF8(cSVOPo_sv), new_len, newp));
                         op_free(new_proto);
                     }
@@ -4698,8 +4702,8 @@ S_move_proto_attr(pTHX_ OP **proto, OP **attrs, const GV * name)
             }
             lasto = o;
         }
-        /* If the list is now just the PUSHMARK, scrap the whole thing; otherwise attributes.xs
-           would get pulled in with no real need */
+        /* If the list is now just the PUSHMARK, scrap the whole thing;
+           otherwise attributes.xs would get pulled in with no real need */
         if (!OpHAS_SIBLING(OpFIRST(*attrs))) {
             op_free(*attrs);
             *attrs = NULL;
@@ -4713,7 +4717,8 @@ S_move_proto_attr(pTHX_ OP **proto, OP **attrs, const GV * name)
             gv_efullname3(svname, name, NULL);
         }
         else if (SvPOK(name) && *SvPVX((SV *)name) == '&')
-            svname = newSVpvn_flags(SvPVX((SV *)name)+1, SvCUR(name)-1, SvUTF8(name)|SVs_TEMP);
+            svname = newSVpvn_flags(SvPVX((SV *)name)+1, SvCUR(name)-1,
+                                    SvUTF8(name)|SVs_TEMP);
         else
             svname = (SV *)name;
         if (ckWARN(WARN_ILLEGALPROTO))
@@ -11400,8 +11405,8 @@ Perl_ck_eof(pTHX_ OP *o)
     if (OpKIDS(o)) {
 	OP *kid;
 	if (IS_TYPE(OpFIRST(o), STUB)) {
-	    OP * const newop
-		= newUNOP(o->op_type, OPf_SPECIAL, newGVOP(OP_GV, 0, PL_argvgv));
+	    OP * const newop = newUNOP(o->op_type, OPf_SPECIAL,
+                                   newGVOP(OP_GV, 0, PL_argvgv));
 	    op_free(o);
 	    o = newop;
 	}
@@ -11704,7 +11709,7 @@ Perl_ck_ftst(pTHX_ OP *o)
 	if (kidtype == OP_CONST && (kid->op_private & OPpCONST_BARE)
 	 && !kid->op_folded) {
 	    OP * const newop = newGVOP(type, OPf_REF,
-		gv_fetchsv(kid->op_sv, GV_ADD, SVt_PVIO));
+		                   gv_fetchsv(kid->op_sv, GV_ADD, SVt_PVIO));
 	    op_free(o);
 	    return newop;
 	}
@@ -11870,7 +11875,7 @@ Perl_ck_fun(pTHX_ OP *o)
 			(kid->op_private & OPpCONST_BARE))
 		    {
 			OP * const newop = newGVOP(OP_GV, 0,
-			    gv_fetchsv(((SVOP*)kid)->op_sv, GV_ADD, SVt_PVIO));
+			       gv_fetchsv(((SVOP*)kid)->op_sv, GV_ADD, SVt_PVIO));
                         /* replace kid with newop in chain */
                         op_sibling_splice(o, prev_kid, 1, newop);
 			op_free(kid);
@@ -12252,8 +12257,8 @@ Perl_ck_readline(pTHX_ OP *o)
          return o; /* ck_fun(o); fails a few tests */
     }
     else {
-	OP * const newop
-	    = newUNOP(OP_READLINE, 0, newGVOP(OP_GV, 0, PL_argvgv));
+	OP * const newop = newUNOP(OP_READLINE, 0,
+                                   newGVOP(OP_GV, 0, PL_argvgv));
 	op_free(o);
 	return newop;
     }
@@ -19295,8 +19300,7 @@ Perl_coresub_op(pTHX_ SV * const coreargssv, const int code,
 	                 0,
 	                 newBINOP(OP_GT, 0,
 	                          newAVREF(newGVOP(OP_GV, 0, PL_defgv)),
-	                          newSVOP(OP_CONST, 0, newSVuv(1))
-	                         ),
+	                          newSVOP(OP_CONST, 0, newSVuv(1))),
 	                 coresub_op(newSVuv((UV)OP_SSELECT), 0,
 	                            OP_SSELECT),
 	                 coresub_op(coreargssv, 0, OP_SELECT)
