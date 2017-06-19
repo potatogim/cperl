@@ -429,6 +429,11 @@ L</Platform Support> section, instead.
 
 =item *
 
+Detect shared-only import libraries like F<libNAME.dll.a>, which have no static
+counterpart F<libNAME.a>, which happens e.g. for C<libffi> on B<cygwin> or msys.
+
+=item *
+
 C<inc_version_list> skips now older development versions. It only
 includes older non-devel versions with even numbers.
 See L<[cperl #284]|https://github.com/perl11/cperl/issues/284>

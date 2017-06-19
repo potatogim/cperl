@@ -5436,6 +5436,11 @@ for thislib in $libswanted; do
 		$test -f "$xxx" && libstyle=shared
 	    fi
 	    if test ! -f "$xxx"; then
+		xxx=$thisdir/lib$thislib.dll.a
+	        $test -f "$xxx" && eval $libscheck
+		$test -f "$xxx" && libstyle=shared
+	    fi
+	    if test ! -f "$xxx"; then
 		xxx=$thisdir/lib$thislib$_a
 	        $test -f "$xxx" && eval $libscheck
 		$test -f "$xxx" && libstyle=static
