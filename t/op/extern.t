@@ -35,7 +35,7 @@ sub check_labs_fields { # 3
   undef *labs;
 }
 
-sub check_labs {
+sub check_labs { # 4
   my $msg = shift;
   ok(!$@, "no errors $@");
   has_sym(\&labs);
@@ -99,6 +99,10 @@ undef %long::;
 eval 'sub abs(int $i) :native("c") :int;';
 check_abs("abs :native('c')");
 
+#SKIP: {
+#    skip 'variable native($c) with threads', 4 if $Config{usethreads};
+
 eval '$c="c"; sub abs(int $i) :native($c) :int;';
 check_abs("abs :native(\$name)");
+#}
 

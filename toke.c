@@ -6217,8 +6217,8 @@ Perl_yylex(pTHX)
                                     if (!utf8)
                                         SvUTF8_off(sarg);
                                     sv_chop(sarg, a+1);
-                                    arg = newSVOP(OP_GVSV, 0,
-                                              (SV*)gv_fetchsv(sarg, GV_ADDMULTI, SVt_PV));
+                                    arg = newSVREF(newGVOP(OP_GV, 0,
+                                              gv_fetchsv(sarg, GV_ADDMULTI, SVt_PV));
                                 }
                                 else {
                                     arg = newOP(OP_PADSV, 0);

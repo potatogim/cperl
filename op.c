@@ -4289,7 +4289,7 @@ Perl_doref(pTHX_ OP *o, I32 type, bool set_op_ref)
 =for apidoc dup_attrlist
 
 Return a copy of an attribute list, i.e. a CONST or LIST with a
-list of CONST or PADSV/GV values.
+list of CONST or PADSV/RV2SV-GV values.
 
 =cut
 */
@@ -4302,28 +4302,45 @@ S_dup_attrlist(pTHX_ OP *o)
 
     /* An attrlist is either a simple OP_CONST or an OP_LIST with kids,
      * where the first kid is OP_PUSHMARK and the remaining ones
-     * are const or dynamic values OP_GVSV/OP_PADSV.
+     * are const or dynamic values RV2SV-GV/PADSV.
      * We need to push the values.
      */
     if (IS_CONST_OP(o))
         /* dynamic values are always prefixed with a const string */
-	rop = newSVOP(OP_CONST, o->op_flags, SvREFCNT_inc_NN(cSVOPo->op_sv));
+	rop = newSVOP(OP_CONST, o->op_flags, SvREFCNT_inc_NN(cSVOPo_sv));
     else {
 	assert(IS_TYPE(o, LIST) && OpKIDS(o));
 	rop = NULL;
 	for (o = OpFIRST(o); o; o = OpSIBLING(o)) {
 	    if (IS_CONST_OP(o))
 		rop = op_append_elem(OP_LIST, rop,
-		          newSVOP(o->op_type, o->op_flags /*|| (o->op_private<<8)*/,
-                                  SvREFCNT_inc_NN(cSVOPo->op_sv)));
-	    else if (IS_TYPE(o, GVSV))
-		rop = op_append_elem(OP_LIST, rop,
-                          newSVOP(OP_GVSV, o->op_flags  /*|| (o->op_private<<8)*/,
-                                  SvREFCNT_inc_NN(cSVOPo->op_sv)));
+                          newSVOP(o->op_type, OpFLAGS(o) /*|| (o->op_private<<8)*/,
+                                  SvREFCNT_inc_NN(cSVOPo_sv)));
 	    else if (IS_TYPE(o, PADSV)) {
                 OP *pop = newOP(OP_PADSV, o->op_flags /*|| (o->op_private<<8)*/);
                 pop->op_targ = o->op_targ;
                 rop = op_append_elem(OP_LIST, rop, pop);
+            }
+            else if (IS_TYPE(o, RV2SV) && OP_TYPE_IS(OpFIRST(o), OP_GV)) {
+#ifndef USE_ITHREADS
+                OP *gop = OpFIRST(o);
+                rop = op_append_elem(OP_LIST, rop,
+                          newSVREF(newGVOP(OP_GV, OpFLAGS(gop) /*|| (o->op_private<<8)*/,
+                                           cGVOPx_gv(gop))));
+#else
+                PADOP *pad;
+                PADOP *gop = (PADOP *)OpFIRST(o);
+                /* XXX avoid deallocating the existing PADSV */
+                NewOp(1101, pad, 1, PADOP);
+                OpTYPE_set(pad, OP_GV);
+                pad->op_next = (OP*)pad;
+                pad->op_flags = (U8)OpFLAGS(gop);
+                /* XXX the gv padix is right before our cvref padix,
+                   the previously allocated pad. it was allocated in
+                   the outer scope. */
+                pad->op_padix = gop->op_padix - 1;
+                rop = op_append_elem(OP_LIST, rop, newSVREF((OP*)pad));
+#endif
             }
 	}
     }
@@ -4367,8 +4384,8 @@ Perl_attrs_has_const(pTHX_ OP *o, bool from_assign)
      * but this is forbidden.
      */
     if (IS_CONST_OP(o)) {
-        if ( SvPOK(cSVOPx_sv(o)) &&
-             strEQc(SvPVX_const(cSVOPx_sv(o)), "const") )
+        if ( SvPOK(cSVOPo_sv) &&
+             strEQc(SvPVX_const(cSVOPo_sv), "const") )
             return OpHAS_SIBLING(o) && IS_CONST_OP(OpSIBLING(o)) ? 2 : 1;
     } else {
         int num = 0;
@@ -4397,7 +4414,7 @@ Perl_attrs_has_const(pTHX_ OP *o, bool from_assign)
             }
         }
 	for (; o; o = OpSIBLING(o)) {
-            const SV *sv = cSVOPx_sv(o);
+            const SV *sv = cSVOPo_sv;
 	    if (IS_CONST_OP(o) && SvPOK(sv)) {
                 num++;
                 if (strEQc(SvPVX_const(sv), "const"))
@@ -4412,8 +4429,9 @@ Perl_attrs_has_const(pTHX_ OP *o, bool from_assign)
 /*
 =for apidoc attrs_runtime
 
-Extract the run-time part of attributes with arguments,
+Extract the run-time part of sub attributes with arguments,
 i.e. variables, not just constant barewords or strings.
+Might be extended to other lexical args, not just subs.
 
 Returns NULL on none or only constant attribute arguments,
 otherwise returns the run-time attributes->import code.
@@ -4429,9 +4447,9 @@ Perl_attrs_runtime(pTHX_ CV *cv, OP *attrs)
 	HV *stash = !CvNAMED(cv) && GvSTASH(CvGV(cv))
                       ? GvSTASH(CvGV(cv))
                       : PL_curstash;
-        /* check for run-time variables */
+        /* check for run-time variables with sub attrs */
         for (; o; o = OpKIDS(o) ? OpFIRST(o) : OpSIBLING(o)) {
-            if (IS_TYPE(o, PADSV) || IS_TYPE(o, GVSV)) {
+            if (IS_TYPE(o, PADSV) || IS_TYPE(o, GV)) {
                 OP *result = NULL;
                 OP *target = newUNOP(OP_RV2CV, 0,
                                  newGVOP(OP_GV, 0,
@@ -4470,7 +4488,7 @@ S_apply_attrs(pTHX_ HV *stash, SV *target, OP *attrs)
         OP *o = attrs;
         /* skip on run-time variables, defer to attrs_runtime */
         for (; o; o = OpKIDS(o) ? OpFIRST(o) : OpSIBLING(o)) {
-            if (IS_TYPE(o, PADSV) || IS_TYPE(o, GVSV)) {
+            if (IS_TYPE(o, PADSV) || IS_TYPE(o, GV)) {
                 return;
             }
         }
@@ -4540,7 +4558,7 @@ S_apply_attrs_my(pTHX_ HV *stash, OP *target, OP *attrs, OP **imopsp)
         arg = newUNOP(OP_REFGEN, 0, arg);
     /* our LEX :const, or sub :ATTR from attrs_runtime() */
     } else if ( ( IS_RV2ANY_OP(target) || IS_TYPE(target, RV2CV) )
-               && IS_TYPE(OpFIRST(target), GV) ) {
+               && OP_TYPE_IS(OpFIRST(target), OP_GV) ) {
         arg = newSVREF(newGVOP(OP_GV,0,cGVOPx_gv(OpFIRST(target))));
         arg->op_targ = target->op_targ;
         if (ISNT_TYPE(target, RV2SV))
@@ -7535,8 +7553,12 @@ Perl_newPADOP(pTHX_ I32 type, I32 flags, SV *sv)
 
     NewOp(1101, padop, 1, PADOP);
     OpTYPE_set(padop, type);
-    padop->op_padix =
-	pad_alloc(type, isGV(sv) ? SVf_READONLY : SVs_PADTMP);
+    padop->op_padix = pad_alloc(type, isGV(sv) ? SVf_READONLY : SVs_PADTMP);
+#if defined(DEBUGGING) && defined(USE_ITHREADS)
+    if (isGV(sv))
+        DEBUG_X(PerlIO_printf(Perl_debug_log, "Pad new GV %s\t0x%" UVxf "[%d]\n",
+            GvNAME(sv), PTR2UV(PL_curpad), (int)padop->op_padix));
+#endif
     SvREFCNT_dec(PAD_SVl(padop->op_padix));
     PAD_SETSV(padop->op_padix, sv);
     assert(sv);

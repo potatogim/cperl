@@ -758,8 +758,9 @@ Perl_pad_alloc(pTHX_ I32 optype, U32 tmptype)
 	     * can be reused; not so for constants.
 	     */
 	    PADNAME *pn;
-	    if (++retval <= names_fill &&
-		   (pn = names[retval]) && PadnamePV(pn))
+	    if (  ++retval <= names_fill &&
+		  (pn = names[retval]) &&
+                  PadnamePV(pn) )
 		continue;
 	    sv = *av_fetch(PL_comppad, retval, TRUE);
 	    if (!(SvFLAGS(sv) &
