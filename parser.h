@@ -75,7 +75,7 @@ typedef struct yy_parser {
     UV		multi_close;	/* delimiter of said string */
     bool        lex_re_reparsing; /* we're doing G_RE_REPARSING */
     U8		lex_super_state;/* lexer state to save */
-    U8		lex_attr_state; /* attr lexer state */
+    expectation	lex_attr_state; /* attr lexer state */
     U16		lex_sub_inwhat;	/* "lex_inwhat" to use in sublex_push */
     I32		lex_allbrackets;/* (), [], {}, ?: bracket count */
     OP		*lex_sub_op;	/* current op in y/// or pattern */
@@ -96,8 +96,7 @@ typedef struct yy_parser {
        NOLINE) after using it.  The purpose of this is to report line num-
        bers in multiline constructs using the number of the first line. */
     line_t	copline;
-    I32		in_my;		/* we're compiling a "my"/"our" declaration */
-    I32		in_sub;		/* we're compiling a "sub/method" declaration */
+    U16		in_my;		/* compiling my/our/state/has declaration */
     HV		*in_my_stash;	/* declared class of this "my" declaration */
     PerlIO	*rsfp;		/* current source file pointer */
     AV		*rsfp_filters;	/* holds chain of active source filters */
@@ -120,6 +119,7 @@ typedef struct yy_parser {
     PERL_BITFIELD16	saw_infix_sigil:1; /* saw & or * or % operator */
     PERL_BITFIELD16	parsed_sub:1;  /* last thing parsed was a sub */
     PERL_BITFIELD16	in_class:1;    /* lexer is in a class block */
+    PERL_BITFIELD16	in_sub:1;      /* lexer is in sub/method declaration */
 } yy_parser;
 
 /* flags for lexer API */

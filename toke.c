@@ -84,7 +84,6 @@ Individual members of C<PL_parser> have their own documentation.
 #define PL_last_lop_op		(PL_parser->last_lop_op)
 #define PL_lex_state		(PL_parser->lex_state)
 #define PL_lex_attr_state	(PL_parser->lex_attr_state)
-#define PL_lex_stuff		(PL_parser->lex_stuff)
 #define PL_rsfp			(PL_parser->rsfp)
 #define PL_rsfp_filters		(PL_parser->rsfp_filters)
 #define PL_in_my		(PL_parser->in_my)
@@ -6178,8 +6177,8 @@ Perl_yylex(pTHX)
                         }
                     }
                     if (UNLIKELY(normalize)) {
-                        char *s1 = pv_uni_normalize(PL_tokenbuf, strlen(PL_tokenbuf),
-                                                    &len);
+                        char *s1 = pv_uni_normalize(PL_tokenbuf,
+                                                    strlen(PL_tokenbuf), &len);
                         Copy(s1, PL_tokenbuf, len+1, char);
                     }
                     sv = newSVpvn_flags(s, len, UTF ? SVf_UTF8 : 0);
@@ -6193,18 +6192,21 @@ Perl_yylex(pTHX)
                                 "Unterminated attribute parameter in attribute list");
                         }
                         /* handle run-time variables in attrs args */
+                        /* evaluate scalars and barewords, resp. add
+                           CONST strings.  :native($lib)
+                           :native("mysqlclient") :native(msqlclient)
+                           :symbol('c_sym'), ...  but not with:
+                           :prototype($$;@) they are passed unparsed
+                           to attributes->import.
+                        */
                         if (PL_in_sub &&
-                            ((len == 6 && (memEQc(s, "native") || memEQc(s, "symbol")))
-                             || strEQc(s, "nativeconv") || strEQc(s, "encoded"))) {
-                            /* evaluate scalars and barewords, resp. add CONST strings.
-                               :native($lib) :native("mysqlclient") :native(msqlclient)
-                               :symbol('c_sym'), ...
-                               but not with:
-                               :prototype($$;@)
-                               they are passed unparsed to attributes->import.
-                            */
+                            ((len == 6 && (memEQc(s, "native")
+                                        || memEQc(s, "symbol")))
+                             || strEQc(s, "nativeconv")
+                             || strEQc(s, "encoded"))) {
                             char *a  = SvPVX(PL_lex_stuff);
-                            STRLEN l = SvCUR(PL_lex_stuff) - 2; /* without the parens */
+                            /* -2: without the parens */
+                            STRLEN l = SvCUR(PL_lex_stuff) - 2;
                             U32 utf8 = SvUTF8(PL_lex_stuff);
                             SV *sarg = newSVpvn_flags(a+1, l, utf8|SVs_TEMP);
                             OP *arg;
@@ -6218,7 +6220,8 @@ Perl_yylex(pTHX)
                                         SvUTF8_off(sarg);
                                     sv_chop(sarg, a+1);
                                     arg = newSVREF(newGVOP(OP_GV, 0,
-                                              gv_fetchsv(sarg, GV_ADDMULTI, SVt_PV));
+                                              gv_fetchsv(sarg, GV_ADDMULTI,
+                                                         SVt_PV)));
                                 }
                                 else {
                                     arg = newOP(OP_PADSV, 0);
@@ -6230,26 +6233,33 @@ Perl_yylex(pTHX)
                                 sv_chop(sarg, a+1);
                                 SvCUR_set(sarg, l-2);
                                 SvTEMP_off(sarg);
-                                arg = newSVOP(OP_CONST, 0, SvREFCNT_inc_NN(sarg));
-                            } else { /* XXX bareword as call or const? for now only const asis */
+                                arg = newSVOP(OP_CONST, 0,
+                                              SvREFCNT_inc_NN(sarg));
+                            } else { /* XXX bareword as call or const?
+                                        for now only const asis */
                                 SvTEMP_off(sarg);
-                                arg = newSVOP(OP_CONST, 0, SvREFCNT_inc_NN(sarg));
+                                arg = newSVOP(OP_CONST, 0,
+                                              SvREFCNT_inc_NN(sarg));
                             }
                             SvCUR_set(PL_lex_stuff, 0);
-                            /* len+1: keep the final ( in "native(" to announce
-                               attributes->import an arg */
+                            /* len+1: keep the final ( in "native(" to
+                               announce attributes->import a single
+                               argument. No structure. */
                             /* produce flat lists for dup_attrlist */
-                            arg = op_prepend_elem(OP_LIST,
-                                      newSVOP(OP_CONST, 0, newSVpvn(s, len)), arg);
+                            attrs = op_append_elem(OP_LIST, attrs,
+                                      newSVOP(OP_CONST, 0, newSVpvn(s, len+1)));
                             attrs = op_append_elem(OP_LIST, attrs, arg);
                         }
                         COPLINE_SET_FROM_MULTI_END;
                     }
-                    /* A proper (..) arg list set by scan_str. Unparsed to attributes->import. */
+                    /* A proper (..) arg list set by scan_str.
+                       Unparsed to attributes->import. */
                     if (PL_lex_stuff) {
-                        sv_catsv(sv, PL_lex_stuff);
-                        attrs = op_append_elem(OP_LIST, attrs,
-                                               newSVOP(OP_CONST, 0, sv));
+                        if (SvCUR(PL_lex_stuff)) {
+                            sv_catsv(sv, PL_lex_stuff);
+                            attrs = op_append_elem(OP_LIST, attrs,
+                                                   newSVOP(OP_CONST, 0, sv));
+                        }
                         SvREFCNT_dec_NN(PL_lex_stuff);
                         PL_lex_stuff = NULL;
                     }
@@ -6265,10 +6275,12 @@ Perl_yylex(pTHX)
                                 }
                                 else
                                     Perl_croak(aTHX_
-                                        "The 'unique' attribute may only be applied to 'our' variables");
+                                        "The 'unique' attribute may only be "
+                                        "applied to 'our' variables");
                             }
-                            /* NOTE: any CV attrs applied here need to be part of
-                               the CVf_BUILTIN_ATTRS define in cv.h! */
+                            /* NOTE: any CV attrs applied here need to
+                               be part of the CVf_BUILTIN_ATTRS define
+                               in cv.h! */
                             else if (!PL_in_my) {
                                 if (memEQc(pv, "lvalue")) {
                                     sv_free(sv);
@@ -6342,7 +6354,8 @@ Perl_yylex(pTHX)
                         /* Check sub return type here, so we can pass an empty attrs
                            to newATTRSUB. This allows any known user or core type
                            to be used. */
-                        else if (PL_in_sub && (typestash = find_in_my_stash(pv, len))) {
+                        else if (PL_in_sub &&
+                                 (typestash = find_in_my_stash(pv, len))) {
                             CvTYPED_on(PL_compcv);
                             /* skip attr callback for existing coretypes */
                             if (!find_in_coretypes(pv, len))
@@ -9400,7 +9413,7 @@ Perl_yylex(pTHX)
                     } else {
                         DEBUG_T(printbuf("### No prototype %s, signature probably\n", d));
                         if (*s == ':' && s[1] != ':')
-                            PL_lex_attr_state = attrful; /* 5 or 6 */
+                            PL_lex_attr_state = attrful; /* XATTRBLOCK or XATTRTERM */
                         s = PL_bufptr = d;
                         PL_lex_stuff = NULL;
                         try_signature = TRUE;

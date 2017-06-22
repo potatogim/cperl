@@ -704,10 +704,10 @@ subsignature:
 		')'
 			{
 			  $$ = $<opval>2;
-                          if (parser->lex_attr_state >= 5 &&
-                              parser->lex_attr_state <= 6) {
+                          if (parser->lex_attr_state == XATTRBLOCK ||
+                              parser->lex_attr_state == XATTRTERM) {
 			      parser->expect = parser->lex_attr_state;
-                              parser->lex_attr_state = 0;
+                              parser->lex_attr_state = XOPERATOR;
                           }
 			}
 	;
