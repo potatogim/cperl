@@ -61,7 +61,7 @@ sub try_compile_and_link {
 
     my $obj_ext = $Config{obj_ext} || ".o";
 
-    if (open(my $tmpc, ">$tmp.c")) {
+    if (open(my $tmpc, ">", "$tmp.c")) {
 	print $tmpc $c;
 	unless (close($tmpc)) {
 	    chdir($cwd);
@@ -71,16 +71,13 @@ sub try_compile_and_link {
 	}
 
 	my $COREincdir = File::Spec->catdir(File::Spec->updir);
-
 	my $ccflags = $Config{'ccflags'} . ' ' . "-I$COREincdir"
 	 . ' -DPERL_NO_INLINE_FUNCTIONS';
-
 	if ($^O eq "MSWin32") {
 	    $ccflags .= " -I../win32 -I../win32/include";
 	}
 
 	my $libs = '';
-
 	# Include libs to be sure of linking against bufferoverflowU.lib for
 	# the SDK2003 compiler on Windows. See win32/Makefile for more details.
 	if ($^O eq "MSWin32" && $Config{cc} =~ /\bcl\b/i) {
@@ -88,7 +85,6 @@ sub try_compile_and_link {
 	}
 
 	my $null = File::Spec->devnull;
-
 	my $errornull = $VERBOSE ? '' : ">$null 2>$null";
 
 	# Darwin g++ 4.2.1 is fussy and demands a space.
@@ -100,15 +96,11 @@ sub try_compile_and_link {
 	}
 
 	my $tmp_exe = "$tmp$ld_exeext";
-
         my $cccmd = "$Config{'cc'} $out_opt$tmp_exe $ccflags $tmp.c $libs $errornull";
 
-	if ($^O eq 'VMS') {
+        if ($^O eq 'VMS') {
             $cccmd = "$Config{'cc'} /include=($COREincdir) $tmp.c";
-        }
-
-       if ($^O eq 'VMS') {
-	    open( my $cmdfile, ">$tmp.com" );
+	    open( my $cmdfile, ">", "$tmp.com" );
 	    print $cmdfile "\$ SET MESSAGE/NOFACILITY/NOSEVERITY/NOIDENT/NOTEXT\n";
 	    print $cmdfile "\$ $cccmd\n";
 	    print $cmdfile "\$ IF \$SEVERITY .NE. 1 THEN EXIT 44\n"; # escalate
@@ -117,12 +109,11 @@ sub try_compile_and_link {
 	    $ok = $?==0;
 	    chdir($cwd);
 	    rmtree($tempdir);
-        }
-        else
-        {
-	    printf "cccmd = $cccmd\n" if $VERBOSE;
+        } else {
+	    printf "# cccmd = $cccmd\n" if $VERBOSE;
 	    my $res = system($cccmd);
 	    $ok = defined($res) && $res == 0 && -s $tmp_exe && -x _;
+	    printf STDERR "# cccmd = \"$cccmd\": $res\n" if !$VERBOSE && !$ok;
 
 	    chdir($cwd);
 	    rmtree($tempdir);
