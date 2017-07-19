@@ -3524,5 +3524,5 @@ unknown:
 }
 
 /* Generated from:
- * ec56874f5c4701790831583241f8fd04b2c6b60f07d7598165461af48437cc12 regen/keywords.pl
+ * 20be490ec56df5ae027465664d7252435e1e835bfe9279b9e5a7f34e944d230b regen/keywords.pl
  * ex: set ro: */

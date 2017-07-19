@@ -36,8 +36,9 @@ PL_hexdigit
 PL_hints
 PL_in_my
 PL_in_my_stash
-PL_in_my_class
-PL_in_my_pod
+PL_in_class
+PL_in_pod
+PL_in_sub
 PL_laststatval
 PL_lex_state
 PL_lex_stuff
@@ -193,9 +194,9 @@ __NEED_DUMMY_VAR__ yy_parser PL_parser;
 # define PL_tokenbuf       D_PPP_my_PL_parser_var(tokenbuf)
 # define PL_in_my          D_PPP_my_PL_parser_var(in_my)
 # define PL_in_my_stash    D_PPP_my_PL_parser_var(in_my_stash)
-# define PL_in_my_class    D_PPP_my_PL_parser_var(in_my_class)
-# define PL_in_my_pod      D_PPP_my_PL_parser_var(in_my_pod)
-# define PL_in_my_sub      D_PPP_my_PL_parser_var(in_my_sub)
+# define PL_in_class       D_PPP_my_PL_parser_var(in_class)
+# define PL_in_pod         D_PPP_my_PL_parser_var(in_pod)
+# define PL_in_sub         D_PPP_my_PL_parser_var(in_sub)
 # define PL_error_count    D_PPP_my_PL_parser_var(error_count)
 
 
@@ -276,6 +277,8 @@ int dummy_parser_warning(void);
 # define ppp_in_my_t bool
 #elif { VERSION < 5.9.5 }
 # define ppp_in_my_t I32
+#elif { CPERL && VERSION >= 5.27.1 }
+# define ppp_in_my_t U8
 #else
 # define ppp_in_my_t U16
 #endif

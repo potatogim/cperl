@@ -104,7 +104,7 @@ read_only_bottom_close_and_rename($_, [$0]) foreach $c, $h;
 
 # coresub_op in op.c expects __FILE__, __LINE__ and __PACKAGE__ to be the
 # first three.
-# my, our, state need to fit into a U8, as they are stored in parser->in_my
+# my, our, state, has need to fit into a U8, as they are stored in parser->in_my
 # negative signs denote "2nd class" keywords.
 # not syntactic constructs, e.g. CORE funcs which can be overriden.
 # See toke.c:7337
@@ -121,6 +121,7 @@ __END__
 +my
 +our
 +state
+-has
 +AUTOLOAD
 +BEGIN
 +UNITCHECK
@@ -221,7 +222,6 @@ __END__
 +goto
 +grep
 -gt
--has
 -hex
 +if
 -index
